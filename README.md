@@ -11,7 +11,50 @@ technical evidence, and a render-inspect-fix loop before delivery.
 
 ## Installation
 
-### Claude Code
+Paste this into a terminal. The installer asks whether to install for Codex,
+Claude Code, or both:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash
+```
+
+The same command updates an existing installation. It uses each agent's native
+plugin marketplace, sets up the renderer, and moves a legacy standalone skill
+out of the discovery path if one exists. No checkout or `git pull` is needed.
+
+For scripts and CI, skip the menu with a flag:
+
+```bash
+# Codex only
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --codex
+
+# Claude Code only
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --claude
+
+# Both
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --all
+```
+
+### Native update commands
+
+The installer is the recommended update command because it also rebuilds the
+renderer. If an agent needs to update only its plugin package, the native
+commands are:
+
+```bash
+# Codex: refresh the marketplace snapshot, then reinstall from it
+codex plugin marketplace upgrade excalidraw-diagram-skill
+codex plugin add excalidraw-diagram-skill@excalidraw-diagram-skill
+
+# Claude Code: refresh the marketplace and update the installed plugin
+claude plugin marketplace update excalidraw-diagram-skill
+claude plugin update excalidraw-diagram@excalidraw-diagram-skill --scope user --yes
+```
+
+Start a new Codex thread after an update. In Claude Code, run
+`/reload-plugins` or start a new session.
+
+### Manual Claude Code installation
 
 The Claude marketplace plugin is the canonical Claude distribution:
 
@@ -20,27 +63,23 @@ The Claude marketplace plugin is the canonical Claude distribution:
 /plugin install excalidraw-diagram@excalidraw-diagram-skill
 ```
 
-Claude plugins do not run a renderer post-install hook in this package. Before
-the first export, ask Claude: `Set up the excalidraw-diagram exporter.` The skill
-runs its single setup script. If export is attempted first, the error prints the
-same exact setup command.
+After a manual plugin install, ask Claude: `Set up the excalidraw-diagram
+exporter.` The one-line installer above performs this step automatically.
 
-### Codex source checkout and IDE extension
+### Codex IDE extension fallback
 
-The canonical installation from this repository is:
+Codex plugins are available in the Codex app and CLI, but not the IDE extension.
+For the IDE extension, install the skill from a source checkout:
 
 ```bash
 git clone https://github.com/alexxlz7r/excalidraw-diagram-skill.git
 cd excalidraw-diagram-skill
-./install.sh
+skills/excalidraw-diagram/scripts/setup_renderer.sh
 ```
 
-`install.sh` links the skill into `$CODEX_HOME/skills` when set, otherwise
-`~/.codex/skills`, and sets up the exporter. This route also works for the Codex
-IDE extension, which does not load plugins. The `.codex-plugin/plugin.json`
-manifest has a distinct purpose: it packages the same skill for Codex plugin
-catalogs and supported plugin surfaces; it is not a second source-checkout
-installer.
+Then link `skills/excalidraw-diagram` into `$CODEX_HOME/skills` (or
+`~/.codex/skills`). Do not keep that standalone copy alongside the plugin in
+Codex app/CLI, or the skill may be discovered twice.
 
 ## Exporter setup
 
@@ -89,7 +128,7 @@ so it can derive a matching theme.
 ```text
 .claude-plugin/                  Claude plugin and marketplace manifests
 .codex-plugin/plugin.json       Codex plugin package manifest
-install.sh                      Canonical Codex source-checkout installer
+install.sh                      Codex/Claude installer and updater
 skills/excalidraw-diagram/
   SKILL.md                      Workflow and reference routing
   references/

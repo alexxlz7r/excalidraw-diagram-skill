@@ -1,0 +1,20 @@
+{
+  "name": "excalidraw-diagram-skill",
+  "interface": {
+    "displayName": "Excalidraw Diagram Skill"
+  },
+  "plugins": [
+    {
+      "name": "excalidraw-diagram-skill",
+      "source": {
+        "source": "local",
+        "path": "."
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

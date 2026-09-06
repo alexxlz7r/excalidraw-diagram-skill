@@ -109,6 +109,23 @@ editable image requested by the user. Keep the working JSON and any temporary
 theme sidecar private unless the user asks for them or they materially help
 future editing.
 
+## Self-update
+
+When the user explicitly asks to update this skill, run the public installer
+for the current agent. Use `--codex` in Codex or `--claude` in Claude Code:
+
+```bash
+# Codex
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --codex
+
+# Claude Code
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --claude
+```
+
+The installer refreshes the marketplace plugin and rebuilds its renderer. After
+it succeeds, tell the user to start a new Codex thread or run `/reload-plugins`
+in Claude Code.
+
 ## Completion Criteria
 
 - The visual structure communicates the intended argument without relying on a
