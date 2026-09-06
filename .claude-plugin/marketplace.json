@@ -1,0 +1,17 @@
+{
+  "name": "excalidraw-diagram-skill",
+  "owner": {
+    "name": "alexxlz7r",
+    "url": "https://github.com/alexxlz7r"
+  },
+  "description": "Excalidraw diagram skill for Claude Code.",
+  "plugins": [
+    {
+      "name": "excalidraw-diagram",
+      "source": "./",
+      "description": "Generate editable Excalidraw SVG or PNG diagrams with visual validation.",
+      "category": "productivity",
+      "keywords": ["excalidraw", "diagram", "visualization", "architecture"]
+    }
+  ]
+}

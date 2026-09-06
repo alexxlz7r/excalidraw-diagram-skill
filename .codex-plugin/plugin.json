@@ -1,0 +1,26 @@
+{
+  "name": "excalidraw-diagram-skill",
+  "version": "1.0.0",
+  "description": "Create editable Excalidraw SVG and PNG diagrams with visual validation.",
+  "author": {
+    "name": "alexxlz7r",
+    "url": "https://github.com/alexxlz7r"
+  },
+  "repository": "https://github.com/alexxlz7r/excalidraw-diagram-skill",
+  "license": "MIT",
+  "keywords": ["excalidraw", "diagram", "visualization", "architecture"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Excalidraw Diagram",
+    "shortDescription": "Create editable Excalidraw diagrams",
+    "longDescription": "Design, export, and visually validate editable Excalidraw SVG or PNG diagrams.",
+    "developerName": "alexxlz7r",
+    "category": "Productivity",
+    "capabilities": ["Write"],
+    "websiteURL": "https://github.com/alexxlz7r/excalidraw-diagram-skill",
+    "defaultPrompt": [
+      "Create an editable Excalidraw diagram for this system."
+    ],
+    "brandColor": "#6965DB"
+  }
+}

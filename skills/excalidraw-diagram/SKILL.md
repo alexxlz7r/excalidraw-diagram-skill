@@ -1,13 +1,20 @@
 ---
 name: excalidraw-diagram
-description: Create Excalidraw diagram JSON files that make visual arguments. Use when the user wants to visualize workflows, architectures, or concepts.
+description: Create editable Excalidraw SVG or PNG diagrams that make visual arguments. Use when the user wants to visualize workflows, architectures, or concepts.
 ---
 
 # Excalidraw Diagram Creator
 
-Generate `.excalidraw` JSON files that **argue visually**, not just display information.
+Generate editable `.excalidraw.svg` or `.excalidraw.png` files that **argue visually**, not just display information.
 
-**Setup:** If the user asks you to set up this skill (renderer, dependencies, etc.), see `README.md` for instructions.
+## Output Contract
+
+Deliver `<name>.excalidraw.svg` unless the user explicitly requests PNG. For PNG,
+deliver `<name>.excalidraw.png`. Both are real images with the complete scene embedded,
+so they open for editing in Excalidraw and the Excalidraw VS Code extension.
+
+Build the scene as `.excalidraw` JSON, then use the bundled exporter. Renaming JSON to
+an image extension does not produce a valid editable image.
 
 ## Customization
 
@@ -197,11 +204,11 @@ For multi-concept diagrams: **each major concept must use a different visual pat
 ### Step 4: Sketch the Flow
 Before JSON, mentally trace how the eye moves through the diagram. There should be a clear visual story.
 
-### Step 5: Generate JSON
-Only now create the Excalidraw elements. **See below for how to handle large diagrams.**
+### Step 5: Generate Working JSON
+Only now create the Excalidraw elements in a `.excalidraw` working file. **See below for how to handle large diagrams.**
 
-### Step 6: Render & Validate (MANDATORY)
-After generating the JSON, you MUST run the render-view-fix loop until the diagram looks right. This is not optional — see the **Render & Validate** section below for the full process.
+### Step 6: Export & Validate (MANDATORY)
+Export the working JSON to the requested editable image and run the export-view-fix loop until the diagram looks right. See **Export & Validate** below.
 
 ---
 
@@ -228,9 +235,9 @@ After all sections are in place, read through the complete JSON and check:
 
 Fix any alignment or binding issues before rendering.
 
-**Phase 3: Render & validate**
+**Phase 3: Export & validate**
 
-Now run the render-view-fix loop from the Render & Validate section. This is where you'll catch visual issues that aren't obvious from JSON — overlaps, clipping, imbalanced composition.
+Now run the export-view-fix loop from the Export & Validate section. This is where you'll catch visual issues that aren't obvious from JSON — overlaps, clipping, imbalanced composition.
 
 ### Section Boundaries
 
@@ -444,23 +451,38 @@ See `references/element-templates.md` for copy-paste JSON templates for each ele
 
 ---
 
-## Render & Validate (MANDATORY)
+## Export & Validate (MANDATORY)
 
-You cannot judge a diagram from JSON alone. After generating or editing the Excalidraw JSON, you MUST render it to PNG, view the image, and fix what you see — in a loop until it's right. This is a core part of the workflow, not a final check.
+You cannot judge a diagram from JSON alone. Export it to an editable image, inspect a
+PNG rendering, and fix the working JSON until the result is right. The exporter sets
+`exportEmbedScene: true` and reloads the embedded scene before it succeeds.
 
-### How to Render
+### How to Export
+
+`<skill-dir>` is the directory containing this `SKILL.md`. Resolve it before running
+these commands.
+
+Default SVG output plus a temporary PNG for visual inspection:
 
 ```bash
-cd .claude/skills/excalidraw-diagram/references && uv run python render_excalidraw.py <path-to-file.excalidraw>
+cd <skill-dir>/references
+uv run python render_excalidraw.py <path-to-file.excalidraw> --preview /tmp/excalidraw-preview.png
 ```
 
-This outputs a PNG next to the `.excalidraw` file. Then use the **Read tool** on the PNG to actually view it.
+This writes `<path-to-file.excalidraw.svg>`. If the user requested PNG:
+
+```bash
+uv run python render_excalidraw.py <path-to-file.excalidraw> --format png
+```
+
+This writes `<path-to-file.excalidraw.png>`; inspect that file directly. `--output`
+may set an explicit destination, and `--scale 1|2|3` controls PNG resolution.
 
 ### The Loop
 
 After generating the initial JSON, run this cycle:
 
-**1. Render & View** — Run the render script, then Read the PNG.
+**1. Export & View** — Run the exporter, then view the preview PNG or exported PNG.
 
 **2. Audit against your original vision** — Before looking for bugs, compare the rendered result to what you designed in Steps 1-4. Ask:
 - Does the visual structure match the conceptual structure you planned?
@@ -487,7 +509,7 @@ After generating the initial JSON, run this cycle:
 - Reposition labels closer to the element they describe
 - Resize elements to rebalance visual weight across sections
 
-**5. Re-render & re-view** — Run the render script again and Read the new PNG.
+**5. Re-export & re-view** — Run the exporter again and view the new PNG.
 
 **6. Repeat** — Keep cycling until the diagram passes both the vision check (Step 2) and the defect check (Step 3). Typically takes 2-4 iterations. Don't stop after one pass just because there are no critical bugs — if the composition could be better, improve it.
 
@@ -501,11 +523,11 @@ The loop is done when:
 - You'd be comfortable showing it to someone without caveats
 
 ### First-Time Setup
-If the render script hasn't been set up yet:
+If the exporter reports missing dependencies or a missing local bundle:
+
 ```bash
-cd .claude/skills/excalidraw-diagram/references
-uv sync
-uv run playwright install chromium
+cd <skill-dir>/references
+./setup_renderer.sh
 ```
 
 ---
@@ -542,11 +564,12 @@ uv run playwright install chromium
 19. **Opacity**: `opacity: 100` for all elements (no transparency)
 20. **Container ratio**: <30% of text elements should be inside containers
 
-### Visual Validation (Render Required)
-21. **Rendered to PNG**: Diagram has been rendered and visually inspected
+### Export & Visual Validation
+21. **Editable image**: Final file is `.excalidraw.svg` by default or `.excalidraw.png` when requested
 22. **No text overflow**: All text fits within its container
 23. **No overlapping elements**: Shapes and text don't overlap unintentionally
 24. **Even spacing**: Similar elements have consistent spacing
 25. **Arrows land correctly**: Arrows connect to intended elements without crossing others
-26. **Readable at export size**: Text is legible in the rendered PNG
+26. **Readable at export size**: Text is legible in the inspected PNG
 27. **Balanced composition**: No large empty voids or overcrowded regions
+28. **Scene embedded**: Exporter completed its `loadFromBlob` verification

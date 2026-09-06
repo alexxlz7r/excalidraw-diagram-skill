@@ -1,0 +1,12 @@
+{
+  "name": "excalidraw-diagram",
+  "version": "1.0.0",
+  "description": "Generate editable Excalidraw SVG or PNG diagrams with visual validation.",
+  "author": {
+    "name": "alexxlz7r"
+  },
+  "repository": "https://github.com/alexxlz7r/excalidraw-diagram-skill",
+  "license": "MIT",
+  "keywords": ["excalidraw", "diagram", "visualization", "architecture"],
+  "skills": ["./skills/excalidraw-diagram"]
+}

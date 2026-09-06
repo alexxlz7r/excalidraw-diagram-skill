@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #ffffff; overflow: hidden; }
+    #root { display: inline-block; }
+    #root svg { display: block; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Locally built bundle (see vendor/BUILD.md). No network access at export time. -->
+  <script src="vendor/excalidraw-bundle.js"></script>
+
+  <script>
+    const { exportToBlob, exportToSvg, loadFromBlob } = window.ExcalidrawLib;
+
+    const arrayBufferToBase64 = (arrayBuffer) => {
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return btoa(binary);
+    };
+
+    const verifyEmbeddedScene = async (blob, sourceElements, sourceFiles) => {
+      const restored = await loadFromBlob(blob, null, null);
+      const restoredIds = new Set(
+        (restored.elements || [])
+          .filter((element) => !element.isDeleted)
+          .map((element) => element.id),
+      );
+      const missingIds = sourceElements
+        .filter((element) => !restoredIds.has(element.id))
+        .map((element) => element.id);
+      if (missingIds.length > 0) {
+        throw new Error(`Embedded scene is missing elements: ${missingIds.join(", ")}`);
+      }
+      const restoredFileIds = new Set(Object.keys(restored.files || {}));
+      const missingFileIds = Object.keys(sourceFiles).filter(
+        (fileId) => !restoredFileIds.has(fileId),
+      );
+      if (missingFileIds.length > 0) {
+        throw new Error(`Embedded scene is missing files: ${missingFileIds.join(", ")}`);
+      }
+      return restoredIds.size;
+    };
+
+    window.exportDiagram = async function(jsonData, format, scale, renderPreview) {
+      try {
+        const data = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+        const elements = (data.elements || []).filter((element) => !element.isDeleted);
+        const files = data.files || {};
+        const appState = {
+          ...(data.appState || {}),
+          exportBackground: data.appState?.exportBackground ?? true,
+          exportEmbedScene: true,
+          exportScale: scale,
+          exportWithDarkMode: data.appState?.exportWithDarkMode ?? false,
+          viewBackgroundColor: data.appState?.viewBackgroundColor || "#ffffff",
+        };
+        const exportOptions = { elements, appState, files };
+
+        let svg = null;
+        let payload;
+        let mimeType;
+
+        if (format === "svg") {
+          svg = await exportToSvg(exportOptions);
+          payload = svg.outerHTML;
+          mimeType = "image/svg+xml";
+          await verifyEmbeddedScene(
+            new Blob([payload], { type: mimeType }),
+            elements,
+            files,
+          );
+        } else if (format === "png") {
+          const blob = await exportToBlob({
+            ...exportOptions,
+            mimeType: "image/png",
+            getDimensions(width, height) {
+              return { width: width * scale, height: height * scale, scale };
+            },
+          });
+          if (!blob) {
+            throw new Error("Excalidraw returned an empty PNG blob");
+          }
+          mimeType = "image/png";
+          await verifyEmbeddedScene(blob, elements, files);
+          payload = arrayBufferToBase64(await blob.arrayBuffer());
+          if (renderPreview) {
+            svg = await exportToSvg(exportOptions);
+          }
+        } else {
+          throw new Error(`Unsupported export format: ${format}`);
+        }
+
+        if (svg) {
+          const root = document.getElementById("root");
+          root.innerHTML = "";
+          root.appendChild(svg);
+        }
+
+        window.__renderComplete = true;
+        window.__renderError = null;
+        return {
+          success: true,
+          format,
+          mimeType,
+          payload,
+          elementCount: elements.length,
+        };
+      } catch (err) {
+        window.__renderComplete = true;
+        window.__renderError = err.message;
+        return { success: false, error: err.message };
+      }
+    };
+
+    window.__moduleReady = true;
+  </script>
+</body>
+</html>

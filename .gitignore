@@ -1,4 +1,5 @@
 .venv/
 *.png
-uv.lock
 __pycache__/
+node_modules/
+skills/excalidraw-diagram/references/vendor/excalidraw-bundle.js
