@@ -1,6 +1,9 @@
 # Element Templates
 
-Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` and `backgroundColor` values are placeholders — always pull actual colors from `color-palette.md` based on the element's semantic purpose.
+Copy-paste JSON templates for common Excalidraw elements. The `strokeColor` and
+`backgroundColor` values are placeholders: use the resolved diagram theme. Read
+`default-theme.md` for standalone work or `theme-adaptation.md` for a known host
+artifact.
 
 ## Free-Floating Text (no container)
 ```json
@@ -15,7 +18,7 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "fontFamily": 3,
   "textAlign": "left",
   "verticalAlign": "top",
-  "strokeColor": "<title color from palette>",
+  "strokeColor": "<primary text from theme>",
   "backgroundColor": "transparent",
   "fillStyle": "solid",
   "strokeWidth": 1,
@@ -43,7 +46,7 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "id": "line1",
   "x": 100, "y": 100,
   "width": 0, "height": 200,
-  "strokeColor": "<structural line color from palette>",
+  "strokeColor": "<structural line color from theme>",
   "backgroundColor": "transparent",
   "fillStyle": "solid",
   "strokeWidth": 2,
@@ -70,8 +73,8 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "id": "dot1",
   "x": 94, "y": 94,
   "width": 12, "height": 12,
-  "strokeColor": "<marker dot color from palette>",
-  "backgroundColor": "<marker dot color from palette>",
+  "strokeColor": "<marker dot color from theme>",
+  "backgroundColor": "<marker dot color from theme>",
   "fillStyle": "solid",
   "strokeWidth": 1,
   "strokeStyle": "solid",
@@ -95,8 +98,8 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "type": "rectangle",
   "id": "elem1",
   "x": 100, "y": 100, "width": 180, "height": 90,
-  "strokeColor": "<stroke from palette based on semantic purpose>",
-  "backgroundColor": "<fill from palette based on semantic purpose>",
+  "strokeColor": "<semantic stroke from theme>",
+  "backgroundColor": "<semantic fill from theme>",
   "fillStyle": "solid",
   "strokeWidth": 2,
   "strokeStyle": "solid",
@@ -128,7 +131,7 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "fontFamily": 3,
   "textAlign": "center",
   "verticalAlign": "middle",
-  "strokeColor": "<text color — match parent shape's stroke or use 'on light/dark fills' from palette>",
+  "strokeColor": "<on-fill text color from theme>",
   "backgroundColor": "transparent",
   "fillStyle": "solid",
   "strokeWidth": 1,
@@ -155,7 +158,7 @@ Copy-paste JSON templates for each Excalidraw element type. The `strokeColor` an
   "type": "arrow",
   "id": "arrow1",
   "x": 282, "y": 145, "width": 118, "height": 0,
-  "strokeColor": "<arrow color — typically matches source element's stroke from palette>",
+  "strokeColor": "<arrow color from theme>",
   "backgroundColor": "transparent",
   "fillStyle": "solid",
   "strokeWidth": 2,

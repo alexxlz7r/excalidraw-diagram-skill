@@ -11,10 +11,7 @@
 </head>
 <body>
   <div id="root"></div>
-
-  <!-- Locally built bundle (see vendor/BUILD.md). No network access at export time. -->
   <script src="vendor/excalidraw-bundle.js"></script>
-
   <script>
     const { exportToBlob, exportToSvg, loadFromBlob } = window.ExcalidrawLib;
 
@@ -30,16 +27,37 @@
 
     const verifyEmbeddedScene = async (blob, sourceElements, sourceFiles) => {
       const restored = await loadFromBlob(blob, null, null);
+      const restoredElements = (restored.elements || []).filter(
+        (element) => !element.isDeleted,
+      );
+      const restoredById = new Map(restoredElements.map((element) => [element.id, element]));
       const restoredIds = new Set(
-        (restored.elements || [])
-          .filter((element) => !element.isDeleted)
-          .map((element) => element.id),
+        restoredElements.map((element) => element.id),
       );
       const missingIds = sourceElements
         .filter((element) => !restoredIds.has(element.id))
         .map((element) => element.id);
       if (missingIds.length > 0) {
         throw new Error(`Embedded scene is missing elements: ${missingIds.join(", ")}`);
+      }
+      for (const source of sourceElements) {
+        const restoredElement = restoredById.get(source.id);
+        if (source.type === "text" && restoredElement.text !== source.text) {
+          throw new Error(`Embedded scene changed text for ${source.id}`);
+        }
+        for (const bindingName of ["startBinding", "endBinding"]) {
+          const expected = source[bindingName]?.elementId || null;
+          const actual = restoredElement[bindingName]?.elementId || null;
+          if (expected !== actual) {
+            throw new Error(`Embedded scene changed ${bindingName} for ${source.id}`);
+          }
+        }
+        if ((source.containerId || null) !== (restoredElement.containerId || null)) {
+          throw new Error(`Embedded scene changed container binding for ${source.id}`);
+        }
+        if ((source.fileId || null) !== (restoredElement.fileId || null)) {
+          throw new Error(`Embedded scene changed file binding for ${source.id}`);
+        }
       }
       const restoredFileIds = new Set(Object.keys(restored.files || {}));
       const missingFileIds = Object.keys(sourceFiles).filter(
@@ -48,7 +66,6 @@
       if (missingFileIds.length > 0) {
         throw new Error(`Embedded scene is missing files: ${missingFileIds.join(", ")}`);
       }
-      return restoredIds.size;
     };
 
     window.exportDiagram = async function(jsonData, format, scale, renderPreview) {
@@ -64,21 +81,17 @@
           exportWithDarkMode: data.appState?.exportWithDarkMode ?? false,
           viewBackgroundColor: data.appState?.viewBackgroundColor || "#ffffff",
         };
+        document.body.style.background = appState.viewBackgroundColor;
         const exportOptions = { elements, appState, files };
 
         let svg = null;
         let payload;
         let mimeType;
-
         if (format === "svg") {
           svg = await exportToSvg(exportOptions);
           payload = svg.outerHTML;
           mimeType = "image/svg+xml";
-          await verifyEmbeddedScene(
-            new Blob([payload], { type: mimeType }),
-            elements,
-            files,
-          );
+          await verifyEmbeddedScene(new Blob([payload], { type: mimeType }), elements, files);
         } else if (format === "png") {
           const blob = await exportToBlob({
             ...exportOptions,
@@ -87,15 +100,11 @@
               return { width: width * scale, height: height * scale, scale };
             },
           });
-          if (!blob) {
-            throw new Error("Excalidraw returned an empty PNG blob");
-          }
+          if (!blob) throw new Error("Excalidraw returned an empty PNG blob");
           mimeType = "image/png";
           await verifyEmbeddedScene(blob, elements, files);
           payload = arrayBufferToBase64(await blob.arrayBuffer());
-          if (renderPreview) {
-            svg = await exportToSvg(exportOptions);
-          }
+          if (renderPreview) svg = await exportToSvg(exportOptions);
         } else {
           throw new Error(`Unsupported export format: ${format}`);
         }
@@ -105,20 +114,13 @@
           root.innerHTML = "";
           root.appendChild(svg);
         }
-
         window.__renderComplete = true;
         window.__renderError = null;
-        return {
-          success: true,
-          format,
-          mimeType,
-          payload,
-          elementCount: elements.length,
-        };
-      } catch (err) {
+        return { success: true, format, mimeType, payload, elementCount: elements.length };
+      } catch (error) {
         window.__renderComplete = true;
-        window.__renderError = err.message;
-        return { success: false, error: err.message };
+        window.__renderError = error.message;
+        return { success: false, error: error.message };
       }
     };
 

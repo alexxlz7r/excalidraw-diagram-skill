@@ -2,4 +2,4 @@
 *.png
 __pycache__/
 node_modules/
-skills/excalidraw-diagram/references/vendor/excalidraw-bundle.js
+skills/excalidraw-diagram/scripts/vendor/excalidraw-bundle.js

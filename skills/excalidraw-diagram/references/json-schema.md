@@ -1,5 +1,22 @@
 # Excalidraw JSON Schema
 
+## Scene Wrapper
+
+```json
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [],
+  "appState": {
+    "viewBackgroundColor": "#FFFFFF",
+    "exportBackground": true,
+    "gridSize": 20
+  },
+  "files": {}
+}
+```
+
 ## Element Types
 
 | Type | Use For |
@@ -25,7 +42,7 @@ All elements share these:
 | `strokeColor` | string | Border color (hex) |
 | `backgroundColor` | string | Fill color (hex or "transparent") |
 | `fillStyle` | string | "solid", "hachure", "cross-hatch" |
-| `strokeWidth` | number | 1, 2, or 4 |
+| `strokeWidth` | number | 1, 2, or 3 |
 | `strokeStyle` | string | "solid", "dashed", "dotted" |
 | `roughness` | number | 0 (smooth), 1 (default), 2 (rough) |
 | `opacity` | number | 0-100 |
@@ -69,3 +86,14 @@ Add for rounded corners:
 ```json
 "roundness": { "type": 3 }
 ```
+
+## Scene-Level Properties
+
+`appState.viewBackgroundColor` sets the canvas color. Set
+`appState.exportBackground` to `false` for a transparent export, or `true` to
+include the canvas color. Keep binary assets in the top-level `files` object and
+reference them from image elements by `fileId`.
+
+For current element examples, see `element-templates.md`. Excalidraw may restore
+omitted optional properties during export, but IDs, dimensions, points,
+bindings, and file references must be internally consistent.

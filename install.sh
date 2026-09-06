@@ -20,5 +20,5 @@ echo "linked $destination -> $skill_dir"
 
 echo
 echo "Setting up the renderer..."
-"$skill_dir/references/setup_renderer.sh"
+"$skill_dir/scripts/setup_renderer.sh"
 echo "Done."

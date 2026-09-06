@@ -1,0 +1,46 @@
+{
+  "canvas": {
+    "background": "#FFFFFF",
+    "exportBackground": true
+  },
+  "text": {
+    "primary": "#172033",
+    "secondary": "#475569",
+    "onFill": "#172033"
+  },
+  "accents": {
+    "primary": { "fill": "#DBEAFE", "stroke": "#1D4ED8" },
+    "secondary": { "fill": "#E0E7FF", "stroke": "#4338CA" },
+    "tertiary": { "fill": "#EDE9FE", "stroke": "#6D28D9" }
+  },
+  "states": {
+    "start": { "fill": "#FFF1D6", "stroke": "#9A3412", "cue": "ellipse or entry marker" },
+    "success": { "fill": "#DCFCE7", "stroke": "#166534", "cue": "end marker or check label" },
+    "warning": { "fill": "#FEF3C7", "stroke": "#92400E", "cue": "warning label or icon" },
+    "decision": { "fill": "#FCE7F3", "stroke": "#9D174D", "cue": "diamond" },
+    "ai": { "fill": "#EDE9FE", "stroke": "#6D28D9", "cue": "explicit AI label" },
+    "error": { "fill": "#FEE2E2", "stroke": "#991B1B", "cue": "error label and strong outline" },
+    "inactive": { "fill": "#F1F5F9", "stroke": "#64748B", "cue": "dashed outline" }
+  },
+  "lines": {
+    "arrow": "#334155",
+    "structural": "#64748B"
+  },
+  "evidence": {
+    "background": "#172033",
+    "codeText": "#F8FAFC",
+    "dataText": "#86EFAC",
+    "mutedText": "#CBD5E1"
+  },
+  "style": {
+    "roughness": 0,
+    "strokeWidth": {
+      "structural": 1,
+      "standard": 2,
+      "emphasis": 3
+    },
+    "fillStyle": "solid",
+    "opacity": 100,
+    "fontFamily": 3
+  }
+}
