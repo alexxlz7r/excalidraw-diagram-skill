@@ -153,9 +153,12 @@ archive_legacy_skill() {
 }
 
 install_for_codex() {
+  local cache_parent="${CODEX_HOME:-$HOME/.codex}/plugins/cache/${MARKETPLACE}/excalidraw-diagram-skill"
   local install_json=""
   local marketplaces_json=""
   local marketplace_kind=""
+  local previous_root=""
+  local previous_roots=()
   local plugin_root=""
   local source="${EXCALIDRAW_MARKETPLACE_SOURCE:-$REPOSITORY}"
 
@@ -173,10 +176,27 @@ install_for_codex() {
     codex plugin marketplace add "$source" >/dev/null
   fi
 
+  if [ -d "$cache_parent" ]; then
+    for previous_root in "$cache_parent"/*; do
+      if [ -e "$previous_root" ] || [ -L "$previous_root" ]; then
+        previous_roots+=("$previous_root")
+      fi
+    done
+  fi
+
   printf '[Codex] Installing or refreshing plugin...\n'
   install_json="$(codex plugin add "$CODEX_PLUGIN" --json)"
   plugin_root="$(printf '%s' "$install_json" | json_codex_install_path)" \
     || fail "Codex installed the plugin but did not report its path."
+
+  for previous_root in "${previous_roots[@]}"; do
+    if [ "$previous_root" != "$plugin_root" ] \
+      && [ ! -e "$previous_root" ] && [ ! -L "$previous_root" ]; then
+      mkdir -p "$(dirname "$previous_root")"
+      ln -s "$plugin_root" "$previous_root"
+      printf '  Preserved cache path for open Codex threads: %s\n' "$(basename "$previous_root")"
+    fi
+  done
 
   printf '[Codex] Setting up renderer...\n'
   setup_renderer "$plugin_root"

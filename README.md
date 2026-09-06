@@ -20,7 +20,9 @@ curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/
 
 The same command updates an existing installation. It uses each agent's native
 plugin marketplace, sets up the renderer, and moves a legacy standalone skill
-out of the discovery path if one exists. No checkout or `git pull` is needed.
+out of the discovery path if one exists. During Codex updates it keeps previous
+cache paths readable for threads that are already open. No checkout or
+`git pull` is needed.
 
 For scripts and CI, skip the menu with a flag:
 
@@ -166,6 +168,7 @@ skills/excalidraw-diagram/
 ## Development checks
 
 ```bash
+tests/install-codex-update.sh
 cd skills/excalidraw-diagram/scripts
 npm test
 npm run test:cold
