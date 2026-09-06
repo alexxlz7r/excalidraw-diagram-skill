@@ -7,8 +7,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 test_root="$(mktemp -d)"
 fake_bin="$test_root/bin"
 codex_home="$test_root/codex-home"
-old_root="$codex_home/plugins/cache/excalidraw-diagram-skill/excalidraw-diagram-skill/1.1.1"
-new_root="$codex_home/plugins/cache/excalidraw-diagram-skill/excalidraw-diagram-skill/1.2.0"
+old_root="$codex_home/plugins/cache/excalidraw-diagram-skill/excalidraw-diagram-skill/1.2.0"
+new_root="$codex_home/plugins/cache/excalidraw-diagram-skill/excalidraw-diagram-skill/1.2.1"
 state_file="$test_root/version"
 
 cleanup() {
@@ -19,7 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$fake_bin" "$old_root/skills/excalidraw-diagram"
-printf '1.1.1\n' >"$state_file"
+printf '1.2.0\n' >"$state_file"
 printf '%s\n' '# old skill' >"$old_root/skills/excalidraw-diagram/SKILL.md"
 
 cat >"$fake_bin/codex" <<'FAKE_CODEX'
@@ -37,12 +37,22 @@ case "$*" in
     printf '{"installed":[{"pluginId":"excalidraw-diagram-skill@excalidraw-diagram-skill","version":"%s","installed":true}]}\n' "$version"
     ;;
   "plugin add excalidraw-diagram-skill@excalidraw-diagram-skill --json")
-    rm -rf -- "$FAKE_OLD_ROOT"
     mkdir -p "$FAKE_NEW_ROOT/skills/excalidraw-diagram/scripts"
     printf '%s\n' '# new skill' >"$FAKE_NEW_ROOT/skills/excalidraw-diagram/SKILL.md"
-    printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$FAKE_NEW_ROOT/skills/excalidraw-diagram/scripts/setup_renderer.sh"
+    printf '%s\n' '#!/usr/bin/env bash' 'sleep 0.3' >"$FAKE_NEW_ROOT/skills/excalidraw-diagram/scripts/setup_renderer.sh"
     chmod +x "$FAKE_NEW_ROOT/skills/excalidraw-diagram/scripts/setup_renderer.sh"
-    printf '1.2.0\n' >"$FAKE_CODEX_STATE"
+    python3 - "$FAKE_OLD_ROOT" <<'PY'
+import subprocess
+import sys
+
+subprocess.Popen(
+    ["sh", "-c", 'sleep 0.1; rm -rf -- "$1"', "sh", sys.argv[1]],
+    start_new_session=True,
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+)
+PY
+    printf '1.2.1\n' >"$FAKE_CODEX_STATE"
     printf '{"installedPath":"%s"}\n' "$FAKE_NEW_ROOT"
     ;;
   *)

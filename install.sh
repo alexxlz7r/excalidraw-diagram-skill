@@ -189,6 +189,9 @@ install_for_codex() {
   plugin_root="$(printf '%s' "$install_json" | json_codex_install_path)" \
     || fail "Codex installed the plugin but did not report its path."
 
+  printf '[Codex] Setting up renderer...\n'
+  setup_renderer "$plugin_root"
+
   for previous_root in "${previous_roots[@]}"; do
     if [ "$previous_root" != "$plugin_root" ] \
       && [ ! -e "$previous_root" ] && [ ! -L "$previous_root" ]; then
@@ -198,8 +201,6 @@ install_for_codex() {
     fi
   done
 
-  printf '[Codex] Setting up renderer...\n'
-  setup_renderer "$plugin_root"
   archive_legacy_skill "${CODEX_HOME:-$HOME/.codex}/skills/excalidraw-diagram"
   printf '[Codex] Ready. Start a new Codex thread to load the updated plugin.\n'
 }
