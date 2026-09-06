@@ -1,6 +1,6 @@
 ---
 name: excalidraw-diagram
-description: Create or edit editable Excalidraw SVG/PNG diagrams, visually validate them, and set up the local exporter when needed. Use for workflows, architectures, concepts, or diagrams integrated into presentations, documents, sites, and brand systems.
+description: Create or edit editable Excalidraw SVG/PNG diagrams, visually validate them, and set up the local exporter when needed. Use for workflows, architectures, lightweight UML and software design, concepts, or diagrams integrated into presentations, documents, sites, and brand systems.
 ---
 
 # Excalidraw Diagram
@@ -31,7 +31,10 @@ export.
    applying it.
 3. For visual patterns, evidence artifacts, hierarchy, layout, and the quality
    bar, read [references/design-guidance.md](references/design-guidance.md).
-4. Before authoring or repairing scene JSON, read
+4. For application design diagrams involving classes or interfaces, actors and
+   use cases, interaction sequences, or control and state flows, read
+   [references/application-design.md](references/application-design.md).
+5. Before authoring or repairing scene JSON, read
    [references/json-schema.md](references/json-schema.md). Use
    [references/element-templates.md](references/element-templates.md) when
    concrete element shapes or bindings are useful.

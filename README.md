@@ -112,6 +112,20 @@ colors, line colors, evidence styles, roughness, and stroke widths. Normal text
 must reach 4.5:1 contrast and large text 3:1. Resolved values are written to the
 working scene, never back into the installed skill.
 
+## Application design diagrams
+
+The skill supports a deliberately small, lightweight UML-like vocabulary for
+software work:
+
+- type maps for classes, interfaces, responsibilities, and dependencies;
+- use-case maps for actors, product boundaries, and user goals;
+- sequence diagrams for calls, events, responses, retries, and failures;
+- flow/state diagrams for decisions, lifecycle changes, and recovery paths.
+
+These diagrams preserve useful engineering semantics without aiming for formal
+UML compliance. The scenario and domain model lead the composition; notation
+stays quiet and the active theme controls the visual language.
+
 ## Usage
 
 Ask the agent for a diagram or an edit, for example:
@@ -135,6 +149,7 @@ skills/excalidraw-diagram/
     default-theme.md            Immutable standalone fallback
     default-theme.json          Machine-readable semantic theme contract
     theme-adaptation.md         Host-artifact theme derivation
+    application-design.md       Lightweight UML-like application diagrams
     design-guidance.md          Visual patterns and quality criteria
     element-templates.md        Excalidraw element examples
     json-schema.md              Scene and binding contract
