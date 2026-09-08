@@ -26,14 +26,21 @@ cache paths readable for threads that are already open. No checkout or
 
 For scripts and CI, skip the menu with a flag:
 
+**Codex only**
+
 ```bash
-# Codex only
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --codex
+```
 
-# Claude Code only
+**Claude Code only**
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --claude
+```
 
-# Both
+**Both**
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --all
 ```
 
@@ -43,12 +50,16 @@ The installer is the recommended update command because it also rebuilds the
 renderer. If an agent needs to update only its plugin package, the native
 commands are:
 
+**Codex:** refresh the marketplace snapshot, then reinstall from it.
+
 ```bash
-# Codex: refresh the marketplace snapshot, then reinstall from it
 codex plugin marketplace upgrade excalidraw-diagram-skill
 codex plugin add excalidraw-diagram-skill@excalidraw-diagram-skill
+```
 
-# Claude Code: refresh the marketplace and update the installed plugin
+**Claude Code:** refresh the marketplace and update the installed plugin.
+
+```bash
 claude plugin marketplace update excalidraw-diagram-skill
 claude plugin update excalidraw-diagram@excalidraw-diagram-skill --scope user --yes
 ```
