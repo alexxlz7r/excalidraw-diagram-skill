@@ -5,10 +5,12 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  buildDeliveryReport,
   ExportError,
   defaultOutputPath,
   exportDiagram,
   inferFormat,
+  parseArguments,
   validateExcalidraw,
 } from "../export_excalidraw.mjs";
 
@@ -120,6 +122,29 @@ test("default and explicit suffix handling", () => {
   assert.equal(inferFormat("diagram.txt"), null);
 });
 
+test("delivery report exposes downscaling at the target width", () => {
+  const elements = [
+    common("canvas", "rectangle", 0, 0, 1340, 700, 1),
+    {
+      ...common("label", "text", 100, 100, 200, 18, 2),
+      text: "Small label",
+      originalText: "Small label",
+      fontSize: 14,
+    },
+  ];
+  const report = buildDeliveryReport(elements, 736);
+
+  assert.equal(report.width, 1340);
+  assert.equal(report.height, 700);
+  assert.equal(report.ratio.toFixed(2), "1.82");
+  assert.match(report.warning, /1\.82× the target width 736 px/);
+  assert.match(report.warning, /14 px will render at 7\.7 px/);
+  assert.deepEqual(
+    parseArguments(["diagram.excalidraw", "--target-width", "736"]).options.targetWidth,
+    736,
+  );
+});
+
 test("validation rejects malformed scenes and broken references", () => {
   assert.deepEqual(validateExcalidraw(null), ["Scene must be a JSON object"]);
   assert.ok(validateExcalidraw({ type: "other", elements: [] }).length >= 2);
@@ -146,6 +171,26 @@ test("SVG and PNG preserve text, bindings, files, and non-ASCII content", async 
   assert.deepEqual((await readFile(pngPath)).subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
 });
 
+test("target width scales the review preview to its delivery width", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "excalidraw-delivery-preview-"));
+  const source = path.join(directory, "diagram.excalidraw");
+  const preview = path.join(directory, "preview.png");
+  const scene = richScene();
+  scene.elements.push(common("wide_scene", "rectangle", 0, 0, 1340, 700, 600));
+  await writeFile(source, JSON.stringify(scene), "utf8");
+
+  const reports = [];
+  await exportDiagram(source, {
+    previewPath: preview,
+    targetWidth: 736,
+    reporter: (message) => reports.push(message),
+  });
+  const png = await readFile(preview);
+  assert.equal(png.readUInt32BE(16), 736);
+  assert.match(reports[0], /^export 1340×700 px$/);
+  assert.match(reports[1], /warning: export is 1\.82× the target width 736 px/);
+});
+
 test("invalid scenes and incompatible output options fail before export", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "excalidraw-invalid-"));
   const source = path.join(directory, "bad.excalidraw");
@@ -153,6 +198,10 @@ test("invalid scenes and incompatible output options fail before export", async 
   await assert.rejects(() => exportDiagram(source), ExportError);
 
   await writeFile(source, JSON.stringify(richScene()), "utf8");
+  await assert.rejects(
+    () => exportDiagram(source, { targetWidth: 0 }),
+    /Target width must be a positive integer/,
+  );
   await assert.rejects(
     () => exportDiagram(source, { outputPath: path.join(directory, "bad.svg") }),
     /must end with \.excalidraw\.svg/,

@@ -1,6 +1,6 @@
 {
   "name": "excalidraw-diagram",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Generate editable Excalidraw SVG or PNG diagrams with visual validation.",
   "author": {
     "name": "alexxlz7r"

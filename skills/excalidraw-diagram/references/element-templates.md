@@ -1,9 +1,8 @@
 # Element Templates
 
-Copy-paste JSON templates for common Excalidraw elements. The `strokeColor` and
-`backgroundColor` values are placeholders: use the resolved diagram theme. Read
-`default-theme.md` for standalone work or `theme-adaptation.md` for a known host
-artifact.
+Copy-paste JSON templates for common Excalidraw elements. Colors, font family,
+roughness, and stroke weights are examples or placeholders: apply the resolved
+whole-diagram style from [SKILL.md](../SKILL.md#route-the-task) to every element.
 
 ## Free-Floating Text (no container)
 ```json
@@ -127,7 +126,7 @@ artifact.
   "width": 120, "height": 25,
   "text": "Process",
   "originalText": "Process",
-  "fontSize": 16,
+  "fontSize": 20,
   "fontFamily": 3,
   "textAlign": "center",
   "verticalAlign": "middle",
@@ -183,3 +182,70 @@ artifact.
 ```
 
 For curves: use 3+ points in `points` array.
+
+## Type container with letter badge
+
+Use this compound element for the type-map notation in
+[application-design.md](application-design.md#letter-badge-notation), which
+defines the letters and colors. Build it from native editable shapes and text.
+
+Measure the name and optional body first, using `scripts/layout.mjs` for
+monospace or actual font measurements for another family. Let `P` be the outer
+padding (start at 20), `G` the circle-to-name gap (12–16), and `D` the shared
+badge diameter/header height (start at 56–64 for a 24 px name). Grow `D` if the
+name wraps and needs more height. Set:
+
+```text
+nameWidth = measured name width + 2 × name padding
+innerWidth = max(D + G + nameWidth, measured body width)
+outerWidth = innerWidth + 2 × P
+outerHeight = 2 × P + D + (body present ? body gap + body height : 0)
+```
+
+For an outer container at `(x, y)`, assemble:
+
+| Element | Position / size | Binding |
+| --- | --- | --- |
+| Rounded outer rectangle | `(x, y)`, `outerWidth × outerHeight` | Relationship arrows bind here |
+| Badge ellipse | `(x + P, y + P)`, `D × D` | Bound letter text |
+| Badge letter | Centered in the ellipse; size about `D / 2` | `containerId: badge.id` |
+| Rounded name rectangle | `(x + P + D + G, y + P)`, remaining inner width × `D` | Bound name text |
+| Type name | Centered in the name rectangle | `containerId: header.id` |
+| Optional body text | `(x + P, y + P + D + body gap)`, measured size | `containerId: null` |
+
+Use `roundness: { "type": 3 }` for both rectangles and solid badge fills.
+Resolve the name rectangle's subtle fill from the same role accent as the
+outer container, using the type-kind strengths in `application-design.md`.
+Keep the letter within the ellipse's inscribed text area. Share one
+`groupIds: [typeGroupId]` across all parts so moving the type carries its badge,
+name, and body. Give each part its own ID and seed. Set reciprocal
+`boundElements` entries on the badge and header for their text, and on the
+outer rectangle for relationship arrows. The body uses explicit positioning
+inside the group so binding it does not recenter it across the whole type.
+
+For aligned examples, derive shared dimensions from the widest header/body
+and tallest content among peers. Inspect that badges remain circular, letters
+are centered, headers do not collide with badges, and body text stays below
+the header at the delivery width.
+
+## UML relationship connectors
+
+Choose relationship semantics from
+[application-design.md](application-design.md#simplified-uml-connectors).
+Apply these properties to the Arrow template; all unlisted heads are `null`.
+
+| Relationship / point order | `strokeStyle` | `startArrowhead` | `endArrowhead` |
+| --- | --- | --- | --- |
+| Subtype → parent | `solid` | `null` | `triangle_outline` |
+| Implementation → interface | `dashed` | `null` | `triangle_outline` |
+| Client → supplier | `dashed` | `null` | `arrow` |
+| Association | `solid` | `null` | `null` |
+| Navigable association → target | `solid` | `null` | `arrow` |
+| Whole → part (composition) | `solid` | `diamond` | `null` |
+| Whole → part (shared aggregation) | `solid` | `diamond_outline` | `null` |
+
+`triangle_outline` is the hollow inheritance head; `triangle` is filled and
+has a different appearance. If the points run from part to whole, move the
+diamond to `endArrowhead`. Keep heads on the semantic endpoint regardless of
+screen direction. Prefer native arrowheads over separately drawn triangles or
+diamonds so they follow the connector during editing.

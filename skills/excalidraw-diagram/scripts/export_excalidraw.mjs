@@ -15,6 +15,7 @@ const MODULE_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(MODULE_PATH);
 const FORMATS = new Set(["svg", "png"]);
 const SCALES = new Set([1, 2, 3]);
+const MAX_DELIVERY_SCALE = 1.15;
 
 export class ExportError extends Error {}
 
@@ -154,6 +155,33 @@ export function computeBoundingBox(elements) {
   return minX === Infinity ? [0, 0, 800, 600] : [minX, minY, maxX, maxY];
 }
 
+export function buildDeliveryReport(elements, targetWidth = null) {
+  const [minX, minY, maxX, maxY] = computeBoundingBox(elements);
+  const width = Math.ceil(maxX - minX);
+  const height = Math.ceil(maxY - minY);
+  if (targetWidth === null) {
+    return { width, height, ratio: null, warning: null };
+  }
+
+  const ratio = width / targetWidth;
+  let warning = null;
+  if (ratio > MAX_DELIVERY_SCALE) {
+    const fontSizes = elements
+      .filter((element) => !element.isDeleted && element.type === "text")
+      .map((element) => element.fontSize)
+      .filter(isFiniteNumber);
+    const smallestFontSize = fontSizes.length > 0 ? Math.min(...fontSizes) : null;
+    const textEffect = smallestFontSize === null
+      ? ""
+      : ` Smallest text at ${smallestFontSize} px will render at ${(smallestFontSize / ratio).toFixed(1)} px.`;
+    warning =
+      `warning: export is ${ratio.toFixed(2)}× the target width ${targetWidth} px.` +
+      textEffect +
+      " Make the scene denser or give the destination more room.";
+  }
+  return { width, height, ratio, warning };
+}
+
 function setupError(message) {
   return new ExportError(`${message}\nRun: ${path.join(SCRIPT_DIR, "setup_renderer.sh")}`);
 }
@@ -175,6 +203,8 @@ export async function exportDiagram(
     scale = 1,
     maxWidth = 1920,
     previewPath = null,
+    targetWidth = null,
+    reporter = null,
   } = {},
 ) {
   const inputPath = path.resolve(excalidrawPath);
@@ -208,6 +238,9 @@ export async function exportDiagram(
   if (!Number.isInteger(maxWidth) || maxWidth < 320) {
     throw new ExportError("Preview width must be an integer of at least 320");
   }
+  if (targetWidth !== null && (!Number.isInteger(targetWidth) || targetWidth <= 0)) {
+    throw new ExportError("Target width must be a positive integer");
+  }
   const finalOutput = resolvedOutput ?? defaultOutputPath(inputPath, format);
   const expectedSuffix = `.excalidraw.${format}`;
   if (!finalOutput.toLowerCase().endsWith(expectedSuffix)) {
@@ -234,6 +267,7 @@ export async function exportDiagram(
 
   const elements = data.elements.filter((element) => !element.isDeleted);
   const [minX, minY, maxX, maxY] = computeBoundingBox(elements);
+  const deliveryReport = buildDeliveryReport(elements, targetWidth);
   const padding = 80;
   const viewportWidth = Math.max(
     320,
@@ -284,10 +318,20 @@ export async function exportDiagram(
       if ((await svg.count()) === 0) {
         throw new ExportError("No SVG element found for preview");
       }
+      if (targetWidth !== null) {
+        await svg.evaluate((element, width) => {
+          element.style.width = `${width}px`;
+          element.style.height = "auto";
+        }, targetWidth);
+      }
       await svg.screenshot({ path: resolvedPreview });
     }
   } finally {
     await browser.close();
+  }
+  if (reporter) {
+    reporter(`export ${deliveryReport.width}×${deliveryReport.height} px`);
+    if (deliveryReport.warning) reporter(deliveryReport.warning);
   }
   return finalOutput;
 }
@@ -300,12 +344,21 @@ Options:
   -f, --format <type>  svg (default) or png
   -s, --scale <n>      PNG scale: 1, 2, or 3
       --preview <path> Also write a PNG preview
+      --target-width <px>
+                         Delivery width; scales previews and warns above 1.15×
   -w, --width <px>     Maximum preview viewport width (default: 1920)
   -h, --help           Show this help`;
 }
 
 export function parseArguments(argv) {
-  const options = { outputPath: null, outputFormat: null, scale: 1, maxWidth: 1920, previewPath: null };
+  const options = {
+    outputPath: null,
+    outputFormat: null,
+    scale: 1,
+    maxWidth: 1920,
+    previewPath: null,
+    targetWidth: null,
+  };
   let input = null;
   const valueOptions = new Map([
     ["-o", "outputPath"], ["--output", "outputPath"],
@@ -313,6 +366,7 @@ export function parseArguments(argv) {
     ["-s", "scale"], ["--scale", "scale"],
     ["-w", "maxWidth"], ["--width", "maxWidth"],
     ["--preview", "previewPath"],
+    ["--target-width", "targetWidth"],
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -321,7 +375,7 @@ export function parseArguments(argv) {
       const value = argv[++index];
       if (value === undefined) throw new ExportError(`Missing value for ${argument}`);
       const key = valueOptions.get(argument);
-      options[key] = ["scale", "maxWidth"].includes(key) ? Number(value) : value;
+      options[key] = ["scale", "maxWidth", "targetWidth"].includes(key) ? Number(value) : value;
     } else if (argument.startsWith("-")) {
       throw new ExportError(`Unknown option: ${argument}`);
     } else if (input === null) {
@@ -341,7 +395,10 @@ async function main() {
       console.log(usage());
       return;
     }
-    const output = await exportDiagram(parsed.input, parsed.options);
+    const output = await exportDiagram(parsed.input, {
+      ...parsed.options,
+      reporter: (message) => console.error(message),
+    });
     console.log(output);
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

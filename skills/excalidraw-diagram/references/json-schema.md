@@ -54,8 +54,8 @@ All elements share these:
 |----------|-------------|
 | `text` | The display text |
 | `originalText` | Same as text |
-| `fontSize` | Size in pixels (16-20 recommended) |
-| `fontFamily` | 3 for monospace (use this) |
+| `fontSize` | Scene-space size; normally 20–24 for body text, 16–18 only for metadata, and 28+ for headings. Scale for the intended viewing width. |
+| `fontFamily` | Use the resolved diagram typography; 1 for handwriting, 2 for sans-serif, 3 for monospace. |
 | `textAlign` | "left", "center", "right" |
 | `verticalAlign` | "top", "middle", "bottom" |
 | `containerId` | ID of parent shape |
@@ -67,8 +67,8 @@ All elements share these:
 | `points` | Array of [x, y] coordinates |
 | `startBinding` | Connection to start shape |
 | `endBinding` | Connection to end shape |
-| `startArrowhead` | null, "arrow", "bar", "dot", "triangle" |
-| `endArrowhead` | null, "arrow", "bar", "dot", "triangle" |
+| `startArrowhead` | null, "arrow", "bar", "dot", "triangle", "triangle_outline", "diamond", "diamond_outline" |
+| `endArrowhead` | null, "arrow", "bar", "dot", "triangle", "triangle_outline", "diamond", "diamond_outline" |
 
 ## Binding Format
 

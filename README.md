@@ -103,9 +103,12 @@ binary remains required for pixel rendering and embedded-scene verification.
 
 ## Themes
 
-The skill resolves a diagram theme before layout:
+The user's style request applies to the whole diagram, across all diagram
+types. If style is unspecified, the agent can offer a few directions such as
+hand-drawn, clean technical, or minimal presentation. It resolves remaining
+theme values before layout:
 
-- standalone diagram or unknown destination: immutable built-in default;
+- standalone diagram or unknown destination: immutable built-in fallback;
 - known presentation, document, site, or brand system: a derived theme based
   on the actual host artifact.
 
@@ -119,7 +122,9 @@ working scene, never back into the installed skill.
 The skill supports a deliberately small, lightweight UML-like vocabulary for
 software work:
 
-- type maps for classes, interfaces, responsibilities, and dependencies;
+- type maps with C/I/A circle badges for classes, interfaces, and abstract
+  classes, fill hues by architectural role, lighter-to-stronger fills by type
+  kind, and simplified UML connectors;
 - use-case maps for actors, product boundaries, and user goals;
 - sequence diagrams for calls, events, responses, retries, and failures;
 - flow/state diagrams for decisions, lifecycle changes, and recovery paths.
@@ -137,7 +142,10 @@ Ask the agent for a diagram or an edit, for example:
 
 SVG is the default. Ask for PNG explicitly when needed. When the diagram belongs
 in an existing deck, document, or site, give the agent access to that artifact
-so it can derive a matching theme.
+so it can derive a matching theme. Provide the pixel width available in the
+destination; if it is unknown, the agent asks for it before laying out the
+scene. The exporter renders its review preview at that delivery width and warns
+when the scene would be downscaled by more than 15%.
 
 ## Repository layout
 
@@ -161,6 +169,7 @@ skills/excalidraw-diagram/
     setup_renderer.sh           Pinned setup, bundle build, dependency prune
     render_template.html        Browser export bridge
     package.json                Runtime and build dependencies
+    layout.mjs                 Shared text and container sizing helpers
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint
 ```

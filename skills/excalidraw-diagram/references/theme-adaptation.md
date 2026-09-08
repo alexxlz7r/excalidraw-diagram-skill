@@ -1,24 +1,31 @@
 # Adapting a Diagram Theme
 
-Read this reference when a diagram belongs inside a known presentation,
-document, site, application, or brand system. Resolve one coherent diagram
-theme from the actual host artifact before layout begins.
+Read this reference for a user-specified style, visual reference, or diagram
+inside a known presentation, document, site, application, or brand system.
+Resolve one coherent diagram theme before layout, using the precedence and
+whole-diagram scope in [SKILL.md](../SKILL.md#route-the-task).
 
 ## Resolution sequence
 
-1. Inspect the source of truth: presentation master or template, document
-   styles, site design tokens and computed styles, or published brand colors.
-2. Record the host background, foreground hierarchy, accent colors, line style,
-   corner/roughness character, and whether embedded graphics use transparent
-   backgrounds.
-3. Map existing host colors into the semantic contract below. Derive only the
-   missing tints or shades needed for readable fills, strokes, and states.
+1. Read the user's style description and inspect any reference supplied for
+   that purpose. When a host artifact is available, inspect its presentation
+   master, document styles, site tokens, or brand colors for remaining values.
+2. Translate the brief into background, foreground hierarchy, accent colors,
+   typography, line weight, corner/roughness character, and transparency. For
+   example, hand-drawn can use a handwriting font and rough strokes; clean
+   technical can use monospace and smooth lines; minimal presentation can use
+   sans-serif, thin lines, and restrained fills. These are starting directions,
+   adjustable to the user's description.
+3. Map the resolved colors into the semantic contract below. Derive missing
+   tints or shades for readable fills, strokes, and states. Fill unspecified
+   values from the existing scene, host, or standalone fallback as applicable.
 4. Check every text/background pair. Require at least 4.5:1 for normal text and
    3:1 for large text (at least 24 px regular or 18.5 px bold).
 5. Check semantic states as a set. Pair important color distinctions with
    labels, shape, stroke style, or icons so meaning survives grayscale and color
    vision differences.
-6. Reuse the resolved theme for every diagram in the same host artifact.
+6. Apply the resolved theme across the complete scene. Reuse it for related
+   diagrams in the same artifact unless the user requests a different style.
 
 When you create an artifact-local `diagram-theme.json`, validate its contract
 and normal-text pairs before applying it:
@@ -28,7 +35,7 @@ node <skill-dir>/scripts/validate_theme.mjs <path-to-diagram-theme.json>
 ```
 
 For a new presentation or site, establish its theme first. For an existing
-artifact, derive from the destination rather than from a generic brand guess.
+artifact, derive unspecified values from the actual destination.
 
 ## Semantic contract
 
@@ -96,8 +103,8 @@ and resumable.
   with its accents.
 - Adjust semantic fills until the resolved on-fill text color passes against
   every fill; the base contract assumes labels may be normal-sized text.
-- Match line weight, roughness, corner character, and typography to the host
-  without sacrificing legibility.
+- Match line weight, roughness, corner character, and typography to the resolved
+  brief, inheriting unspecified details from the host while keeping text legible.
 - Use `canvas.exportBackground: false` when the host background should show
   through, which is often appropriate for slides. Still set the scene's
   `viewBackgroundColor` to the host background so preview decisions are made in

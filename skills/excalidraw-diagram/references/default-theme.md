@@ -1,9 +1,10 @@
 # Default Diagram Theme
 
 Use [default-theme.json](default-theme.json) as the immutable fallback for
-standalone diagrams and whenever the destination artifact is unknown. Copy its
-resolved values into the working Excalidraw scene; do not edit the installed
-JSON or this file at runtime.
+standalone diagrams, filling values left unspecified by the user's style
+request. Resolve style using the rules in [SKILL.md](../SKILL.md#route-the-task).
+Copy fallback values into the working Excalidraw scene and apply the requested
+overrides there; do not edit the installed JSON or this file at runtime.
 
 The theme intentionally uses light semantic fills, dark boundaries, and a
 single dark on-fill text color. Every normal text pairing passes 4.5:1 contrast;
