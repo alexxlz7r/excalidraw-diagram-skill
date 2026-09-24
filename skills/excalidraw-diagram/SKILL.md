@@ -21,6 +21,32 @@ new artifact: the requested editable SVG or PNG. Preserve a working JSON only
 when the user explicitly asks for it; changing a JSON filename to an image
 suffix is not an export.
 
+## Run in a Subagent
+
+Create and edit diagrams in a subagent. The references, scene JSON, and preview
+images then stay out of the main conversation. If this session is already a
+subagent started for the diagram, skip this section and do the work. Run
+self-update and other small tasks in the main session.
+
+1. In the main session, resolve everything that needs the user, because a
+   subagent cannot ask questions: the delivery width, the output path and
+   format, the file to edit, and an optional style choice.
+2. If the host can fork the conversation, fork it. In Claude Code, call the
+   Agent tool with `subagent_type: "fork"`. The fork inherits the full
+   conversation, so the prompt only names the task: use this skill, the
+   resolved values from step 1, and the reply format from step 4.
+3. If the host has subagents but cannot fork, start a new subagent with a
+   brief. The subagent sees only the brief, so include the path to this
+   `SKILL.md`, the purpose and audience, the facts, names, and data from the
+   conversation that the diagram shows, the source files to inspect, the
+   style or theme, the resolved values from step 1, and the reply format from
+   step 4.
+4. Ask the subagent to reply with the path of the delivered file, a one-line
+   summary, and any assumption or unresolved issue. Relay this reply to the
+   user. Do not open the scene JSON or the preview in the main session.
+
+If the host has no subagents, do the work in the current session.
+
 ## Route the Task
 
 1. Determine whether the task creates a new diagram or edits an existing one.

@@ -158,6 +158,11 @@ destination; if it is unknown, the agent asks for it before laying out the
 scene. The exporter renders its review preview at that delivery width and warns
 when the scene would be downscaled by more than 15%.
 
+The agent draws in a subagent when the host supports one. Claude Code forks the
+conversation, so the subagent has the full context. Other hosts give a new
+subagent a brief of the relevant facts. The main conversation receives only the
+path of the delivered file and a short summary.
+
 ## Repository layout
 
 ```text
