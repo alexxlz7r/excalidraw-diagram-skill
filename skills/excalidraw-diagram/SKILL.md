@@ -47,6 +47,12 @@ self-update and other small tasks in the main session.
 
 If the host has no subagents, do the work in the current session.
 
+A fork runs on the model of the main session. Diagram quality depends on the
+model: in benchmarks, the most capable model (Opus in Claude Code) gave the
+best layouts in the least time. If the main session runs a smaller model and
+the diagram does not depend on the conversation, start a new subagent on the
+most capable model with a brief instead of a fork.
+
 ## Route the Task
 
 1. Determine whether the task creates a new diagram or edits an existing one.
@@ -75,6 +81,11 @@ If the host has no subagents, do the work in the current session.
    classes (C/I/A badges), actors and use cases, interaction sequences, or
    control and state flows, read
    [references/application-design.md](references/application-design.md).
+   For a type map, generate the scene from a spec with `scripts/type_map.mjs`,
+   as described in [references/type-map-spec.md](references/type-map-spec.md),
+   instead of authoring coordinates by hand. Author the scene by hand only
+   when the argument depends on a composition that the generator cannot
+   express, such as two mirrored structures.
 5. Before authoring or repairing scene JSON, read
    [references/json-schema.md](references/json-schema.md). Use
    [references/element-templates.md](references/element-templates.md) when

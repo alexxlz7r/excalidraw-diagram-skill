@@ -36,6 +36,9 @@ the codebase.
 A good type map lets a developer identify the extension point, the concrete
 implementations, and the direction of dependency without reading source code.
 
+Generate type maps with `scripts/type_map.mjs`. The script applies the notation
+below and calculates the layout. See [type-map-spec.md](type-map-spec.md).
+
 ### Letter-badge notation
 
 Use the same rounded type container for all three kinds. Inside its top row,

@@ -144,6 +144,10 @@ These diagrams preserve useful engineering semantics without aiming for formal
 UML compliance. The scenario and domain model lead the composition; notation
 stays quiet and the active theme controls the visual language.
 
+The agent writes a type map as a compact JSON spec. `scripts/type_map.mjs`
+lays the spec out with ELK and draws the notation, so the agent does not
+calculate coordinates by hand.
+
 ## Usage
 
 Ask the agent for a diagram or an edit, for example:
@@ -176,6 +180,7 @@ skills/excalidraw-diagram/
     default-theme.json          Machine-readable semantic theme contract
     theme-adaptation.md         Host-artifact theme derivation
     application-design.md       Lightweight UML-like application diagrams
+    type-map-spec.md            Spec format for the type map generator
     design-guidance.md          Visual patterns and quality criteria
     element-templates.md        Excalidraw element examples
     json-schema.md              Scene and binding contract
@@ -186,6 +191,7 @@ skills/excalidraw-diagram/
     render_template.html        Browser export bridge
     package.json                Runtime and build dependencies
     layout.mjs                 Shared text and container sizing helpers
+    type_map.mjs                Type map generator with ELK layout
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint
 ```

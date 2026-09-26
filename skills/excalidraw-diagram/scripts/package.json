@@ -9,6 +9,7 @@
     "test:cold": "bash tests/cold-setup.sh"
   },
   "dependencies": {
+    "elkjs": "0.12.0",
     "playwright": "1.63.0"
   },
   "devDependencies": {
