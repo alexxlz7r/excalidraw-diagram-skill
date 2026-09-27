@@ -81,7 +81,9 @@ an array of lines.
 `blue`, abstract `violet`), `memberCells` (`auto`: cells for structs, a plain
 list for other kinds; or `true` or `false` for all types), and `highlight`
 (`yellow`), the highlight hue for types without their own tone. A font family
-must have measured widths: 1, 3, 5, 6, 7, 8, or 9.
+must have measured widths: 1, 3, 5, 6, 7, 8, or 9. To use Comic Shanns as the
+label font, set `"style": { "preset": "clean", "fontFamily": 8 }`. See
+[styles.md](styles.md#comic-shanns).
 
 A type box has a header with the kind badge and the name, then compartments:
 the note, the fields, and the methods. A member that contains `(` is a method;

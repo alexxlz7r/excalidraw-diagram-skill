@@ -28,6 +28,17 @@ test("proportional fonts measure narrow and wide letters differently", () => {
   assert.equal(textWidth("漢字", 20, { fontFamily: 6 }), 40, "an unknown character is 1 em");
 });
 
+test("Cascadia rounds each character to a whole pixel, as the renderer does", () => {
+  // Widths measured in the headless browser that renders the previews.
+  const path = "GET /api/episodes/{id}/spec";
+  assert.equal(textWidth(path, 16), 243);
+  assert.equal(textWidth(path, 18), 297);
+  assert.equal(textWidth(path, 24), 378);
+  for (const fontSize of [12, 13, 14, 15, 17, 19, 20, 22]) {
+    assert.ok(Number.isInteger(textWidth(path, fontSize)), `size ${fontSize}`);
+  }
+});
+
 test("fonts without measured widths require a width factor", () => {
   assert.throws(
     () => textWidth("Label", 20, { fontFamily: 2 }),

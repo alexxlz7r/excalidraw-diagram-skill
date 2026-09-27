@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
 import { buildTypeMap, PALETTE, SpecError } from "../type_map.mjs";
+import { textWidth } from "../layout.mjs";
 
 const dipSpec = {
   groups: [{ id: "high", label: "business rules" }],
@@ -382,6 +383,16 @@ test("clean is the default style: sans labels, monospace members, smooth lines",
   assert.equal(elements.get("SqlOrderRepository-member-0").fontFamily, 3);
   assert.equal(elements.get("group-backend-label").fontFamily, 6);
   for (const element of elements.values()) assert.equal(element.roughness, 0, element.id);
+});
+
+test("members in Cascadia keep their exact width; labels in Comic Shanns keep a margin", async () => {
+  const elements = byId(await buildTypeMap(zoneSpec({ preset: "clean", fontFamily: 8 })));
+  const member = elements.get("SqlOrderRepository-member-0");
+  assert.equal(member.fontFamily, 3);
+  assert.equal(member.width, textWidth(member.text, member.fontSize, { fontFamily: 3 }));
+  const name = elements.get("SqlOrderRepository-name");
+  assert.equal(name.fontFamily, 8);
+  assert.ok(Math.abs(name.width - textWidth(name.text, name.fontSize, { fontFamily: 8 }) * 1.04) < 1e-6);
 });
 
 test("style selects a preset by name, with optional overrides", async () => {

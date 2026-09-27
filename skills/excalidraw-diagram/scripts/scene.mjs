@@ -4,7 +4,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { MEASURED_FONT_FAMILIES, textHeight, textWidth } from "./layout.mjs";
+import { MEASURED_FONT_FAMILIES, PIXEL_ADVANCE_FAMILIES, textHeight, textWidth } from "./layout.mjs";
 
 export class SpecError extends Error {}
 
@@ -139,8 +139,16 @@ export function requireId(value, label) {
   return value;
 }
 
+// The renderer draws a proportional font up to about 3 % wider than the
+// advance table, because of kerning and pixel hinting.
+const TEXT_WIDTH_MARGIN = 1.04;
+
 export function measure(text, fontSize, style, fontFamily = style.fontFamily) {
-  return { width: textWidth(text, fontSize, { fontFamily }), height: textHeight(text, fontSize) };
+  const width = textWidth(text, fontSize, { fontFamily });
+  return {
+    width: PIXEL_ADVANCE_FAMILIES.has(fontFamily) ? width : width * TEXT_WIDTH_MARGIN,
+    height: textHeight(text, fontSize),
+  };
 }
 
 // Give each arrowhead an end segment of the length that sets its size.

@@ -62,6 +62,14 @@ fields, and the methods. Zones have a dashed ink outline and a plain title. A
 highlight is a gray hachure, not a color. If the argument depends on color,
 such as a legend of tones, use `clean`.
 
+## Comic Shanns
+
+Comic Shanns (`fontFamily: 8`) can replace Nunito as the label font of
+`clean`. Set it as an override: `"style": { "preset": "clean", "fontFamily": 8 }`.
+The code font stays Cascadia. Do not use Comic Shanns below 16 px: at 12 to
+14 px the renderer draws it up to 9 % wider than the measured width, and the
+text can clip.
+
 ## Text measurement
 
 `scripts/layout.mjs` measures text with the advance width of each character,
@@ -69,3 +77,9 @@ per font family. `scripts/font-metrics.json` holds the widths for families 1,
 3, 5, 6, 7, 8, and 9. Helvetica (2) has no table: the export does not embed
 it. After an Excalidraw upgrade, measure again with
 `node scripts/measure_fonts.mjs`.
+
+The renderer rounds each Cascadia (3) advance to a whole pixel, and
+`textWidth` does the same, so a Cascadia width is exact. Other fonts have
+kerning and pixel hinting: the renderer draws them up to about 3 % wider or
+narrower than the table. The generators add a margin of 4 % to the width of
+text in these fonts. `textWidth` and `boxFor` do not add the margin.

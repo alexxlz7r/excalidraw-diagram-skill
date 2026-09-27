@@ -10,6 +10,9 @@ const ADVANCES = new Map(Object.entries(METRICS.families).map(([family, { widths
 ]));
 // A character outside the measured ranges, such as CJK, counts as 1 em.
 const UNKNOWN_ADVANCE = 1;
+// The renderer rounds each advance of these families to a whole pixel, so
+// their widths are exact.
+export const PIXEL_ADVANCE_FAMILIES = new Set([3]);
 
 export const MEASURED_FONT_FAMILIES = [...ADVANCES.keys()];
 
@@ -39,8 +42,11 @@ export function textWidth(
         `charWidthFactor is required for font family ${fontFamily}; measured families: ${MEASURED_FONT_FAMILIES.join(", ")}`,
       );
     }
-    const lineWidth = (line) => [...line].reduce((sum, character) => sum + (advances.get(character) ?? UNKNOWN_ADVANCE), 0);
-    return Math.max(...lines.map(lineWidth)) * fontSize;
+    const advance = PIXEL_ADVANCE_FAMILIES.has(fontFamily)
+      ? (character) => Math.round((advances.get(character) ?? UNKNOWN_ADVANCE) * fontSize)
+      : (character) => (advances.get(character) ?? UNKNOWN_ADVANCE) * fontSize;
+    const lineWidth = (line) => [...line].reduce((sum, character) => sum + advance(character), 0);
+    return Math.max(...lines.map(lineWidth));
   }
   positiveNumber(charWidthFactor, "charWidthFactor");
   return Math.max(...lines.map((line) => [...line].length)) * fontSize * charWidthFactor;

@@ -4,6 +4,7 @@ import test from "node:test";
 import { validateExcalidraw } from "../export_excalidraw.mjs";
 import { PALETTE, rebindScene } from "../scene.mjs";
 import { buildFlow, SpecError } from "../flow.mjs";
+import { textWidth } from "../layout.mjs";
 
 function byId(scene) {
   return new Map(scene.elements.map((element) => [element.id, element]));
@@ -28,6 +29,19 @@ const review = {
     { from: "valid", to: "check", label: "retry" },
   ],
 };
+
+test("text in a proportional font keeps a 4 % margin for the renderer", async () => {
+  for (const [style, fontFamily] of [["clean", 6], ["sketch", 5], [{ preset: "clean", fontFamily: 8 }, 8]]) {
+    const scene = await buildFlow({ ...review, style });
+    const texts = scene.elements.filter((element) => element.type === "text");
+    assert.ok(texts.length > 0);
+    for (const text of texts) {
+      assert.equal(text.fontFamily, fontFamily, text.id);
+      const measured = textWidth(text.text, text.fontSize, { fontFamily });
+      assert.ok(Math.abs(text.width - measured * 1.04) < 1e-6, `${text.id} in font ${fontFamily}`);
+    }
+  }
+});
 
 test("each node kind has its own shape, and names sit inside actions and decisions", async () => {
   const scene = await buildFlow(review);
