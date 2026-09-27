@@ -155,6 +155,10 @@ in spec order with `e<n>-label`, and `group-<group>` for zones with
 
 - The generator does not wrap text. It prints a warning when the scene is
   wider than 1200 px.
-- Swimlanes are not supported. Use groups for stages or owners.
+- Swimlanes are not supported. Use groups for stages or owners. ELK has no
+  lanes. A tested approach: lay out the flow, move each node into the band of
+  its lane, then route the edges in a second ELK pass with interactive phases
+  and fixed ports. The main path stays straight inside one lane, but the other
+  edges need more work.
 - A straight labelled edge keeps two points, so its label sits at its middle.
 - An edge that spans several layers can cross the main path.
