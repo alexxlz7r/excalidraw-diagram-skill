@@ -13,6 +13,7 @@ cp "$source_dir/vendor/entry.js" "$source_dir/vendor/VERSION" "$test_dir/vendor/
 
 EXCALIDRAW_SKIP_BROWSER_INSTALL=1 "$test_dir/setup_renderer.sh"
 test -s "$test_dir/vendor/excalidraw-bundle.js"
+test -n "$(find "$test_dir/vendor/fonts/Nunito" -name '*.woff2')"
 test -d "$test_dir/node_modules/playwright"
 test ! -d "$test_dir/node_modules/@excalidraw/excalidraw"
 node "$test_dir/export_excalidraw.mjs" --help >/dev/null

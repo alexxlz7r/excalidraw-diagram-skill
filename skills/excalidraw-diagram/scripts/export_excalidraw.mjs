@@ -16,6 +16,8 @@ const SCRIPT_DIR = path.dirname(MODULE_PATH);
 const FORMATS = new Set(["svg", "png"]);
 const SCALES = new Set([1, 2, 3]);
 const MAX_DELIVERY_SCALE = 1.15;
+const FONTS_DIR = path.join(SCRIPT_DIR, "vendor", "fonts");
+const FONT_PATH = /\/dist\/prod\/fonts\/(.+)$/;
 
 export class ExportError extends Error {}
 
@@ -195,6 +197,30 @@ async function exists(filePath) {
   }
 }
 
+// Excalidraw loads its fonts from esm.sh when EXCALIDRAW_ASSET_PATH is unset,
+// and links the CDN in the SVG when a font does not load. Serve the fonts from
+// the local copy and block every other request, so an export never depends on
+// the network. Returns the list of font paths that the copy does not have.
+export async function serveLocalFonts(page, fontsDir = FONTS_DIR) {
+  const missing = [];
+  const root = path.resolve(fontsDir);
+  await page.route(/^https?:\/\//, async (route) => {
+    const match = FONT_PATH.exec(new URL(route.request().url()).pathname);
+    const file = match ? path.resolve(root, decodeURIComponent(match[1])) : null;
+    if (file && file.startsWith(`${root}${path.sep}`) && (await exists(file))) {
+      await route.fulfill({
+        path: file,
+        contentType: "font/woff2",
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
+      return;
+    }
+    if (match) missing.push(match[1]);
+    await route.abort();
+  });
+  return missing;
+}
+
 export async function exportDiagram(
   excalidrawPath,
   {
@@ -205,6 +231,7 @@ export async function exportDiagram(
     previewPath = null,
     targetWidth = null,
     reporter = null,
+    fontsDir = FONTS_DIR,
   } = {},
 ) {
   const inputPath = path.resolve(excalidrawPath);
@@ -257,6 +284,9 @@ export async function exportDiagram(
   const bundlePath = path.join(SCRIPT_DIR, "vendor", "excalidraw-bundle.js");
   if (!(await exists(templatePath))) throw setupError(`Template not found at ${templatePath}`);
   if (!(await exists(bundlePath))) throw setupError(`Excalidraw bundle not found at ${bundlePath}`);
+  if (fontsDir === FONTS_DIR && !(await exists(FONTS_DIR))) {
+    throw setupError(`Excalidraw fonts not found at ${FONTS_DIR}`);
+  }
 
   let chromium;
   try {
@@ -290,6 +320,7 @@ export async function exportDiagram(
       viewport: { width: viewportWidth, height: viewportHeight },
       deviceScaleFactor: 1,
     });
+    const missingFonts = await serveLocalFonts(page, fontsDir);
     await page.goto(pathToFileURL(templatePath).href);
     await page.waitForFunction(() => window.__moduleReady === true, null, {
       timeout: 15_000,
@@ -305,6 +336,11 @@ export async function exportDiagram(
     await page.waitForFunction(() => window.__renderComplete === true, null, {
       timeout: 15_000,
     });
+    const linkedFont = format === "svg" && /@font-face[^}]*url\(\s*["']?https?:/.test(result.payload);
+    if (missingFonts.length > 0 || linkedFont) {
+      const names = missingFonts.length > 0 ? missingFonts.join(", ") : "a font linked from the network";
+      throw setupError(`Export could not embed the fonts (${names})`);
+    }
 
     await mkdir(path.dirname(finalOutput), { recursive: true });
     if (format === "svg") {

@@ -165,10 +165,23 @@ test("SVG and PNG preserve text, bindings, files, and non-ASCII content", async 
   const svgPath = await exportDiagram(source, { previewPath: preview });
   const pngPath = await exportDiagram(source, { outputFormat: "png" });
   assert.equal(path.basename(svgPath), "diagram.excalidraw.svg");
-  assert.match(await readFile(svgPath, "utf8"), /<metadata/);
+  const svg = await readFile(svgPath, "utf8");
+  assert.match(svg, /<metadata/);
+  assert.match(svg, /url\(data:font\/woff2/, "fonts are embedded");
+  assert.doesNotMatch(svg, /url\(https?:/, "no font is linked from the network");
   assert.deepEqual((await readFile(preview)).subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
   assert.equal(path.basename(pngPath), "diagram.excalidraw.png");
   assert.deepEqual((await readFile(pngPath)).subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
+});
+
+test("export fails instead of linking fonts that it cannot embed", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "excalidraw-missing-fonts-"));
+  const source = path.join(directory, "diagram.excalidraw");
+  await writeFile(source, JSON.stringify(richScene()), "utf8");
+  await assert.rejects(
+    () => exportDiagram(source, { fontsDir: path.join(directory, "no-fonts") }),
+    (error) => error instanceof ExportError && /could not embed the fonts/.test(error.message),
+  );
 });
 
 test("target width scales the review preview to its delivery width", async () => {

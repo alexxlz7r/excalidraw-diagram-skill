@@ -3,6 +3,7 @@
 __pycache__/
 node_modules/
 skills/excalidraw-diagram/scripts/vendor/excalidraw-bundle.js
+skills/excalidraw-diagram/scripts/vendor/fonts/
 
 # local diagram experiments, never committed
 /playground/

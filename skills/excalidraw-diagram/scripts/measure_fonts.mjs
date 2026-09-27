@@ -12,6 +12,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { chromium } from "playwright";
 
+import { serveLocalFonts } from "./export_excalidraw.mjs";
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT = path.join(SCRIPT_DIR, "font-metrics.json");
 // A large size keeps the rounding of the canvas below 0.001 em.
@@ -44,6 +46,7 @@ const characters = RANGES.flatMap(([first, last]) =>
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
+  const missing = await serveLocalFonts(page);
   await page.goto(pathToFileURL(path.join(SCRIPT_DIR, "render_template.html")).href);
   await page.waitForFunction(() => window.__moduleReady === true, null, { timeout: 15_000 });
   const widths = await page.evaluate(async ([families, characters, size]) => {
@@ -70,6 +73,7 @@ try {
     }
     return result;
   }, [FAMILIES, characters, SIZE]);
+  if (missing.length > 0) throw new Error(`fonts missing from vendor/fonts: ${missing.join(", ")}`);
 
   const metrics = { characters: characters.join(""), families: {} };
   for (const [family, name] of Object.entries(FAMILIES)) {
