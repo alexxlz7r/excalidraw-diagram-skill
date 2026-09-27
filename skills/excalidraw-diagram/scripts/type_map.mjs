@@ -5,7 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { textHeight, textWidth } from "./layout.mjs";
+import { MEASURED_FONT_FAMILIES, textHeight, textWidth } from "./layout.mjs";
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(MODULE_PATH);
@@ -33,11 +33,11 @@ export const PALETTE = {
 };
 
 const KINDS = {
-  class: { badge: "C", body: 2, badgeShade: 3 },
-  interface: { badge: "I", body: 1, badgeShade: 2 },
-  abstract: { badge: "A", body: 1, badgeShade: 3 },
-  struct: { badge: null, body: 1, badgeShade: null },
-  note: { badge: null, body: 1, badgeShade: null },
+  class: { badge: "C" },
+  interface: { badge: "I" },
+  abstract: { badge: "A" },
+  struct: { badge: null },
+  note: { badge: null },
 };
 
 // `reverse` edges run against the layout direction, so parents sit first.
@@ -55,17 +55,35 @@ export const RELATIONS = {
 const DIRECTIONS = new Set(["DOWN", "UP", "RIGHT", "LEFT"]);
 const SIDES = { left: "WEST", right: "EAST" };
 
+// Named styles. `clean` stacks the compartments of a type as filled boxes and
+// hatches the zones; `sketch` draws rough ink outlines without color.
+export const STYLE_PRESETS = {
+  clean: {
+    roughness: 0,
+    fontFamily: 6,
+    codeFontFamily: 3,
+    kindTones: { class: "orange", interface: "blue", abstract: "violet" },
+  },
+  sketch: {
+    roughness: 1,
+    fontFamily: 5,
+    codeFontFamily: 5,
+    kindTones: {},
+  },
+};
+export const DEFAULT_PRESET = "clean";
+
 const DEFAULT_STYLE = {
   fontSize: 20,
-  fontFamily: 3,
-  charWidthFactor: null,
-  roughness: 0,
   background: PALETTE.white,
   ink: PALETTE.black,
   tone: "gray",
   memberCells: "auto",
   highlight: "yellow",
 };
+
+// Insets of the text in a type box.
+const BOX = { padX: 12, padY: 8, badgeGap: 10 };
 
 const LINE_HEIGHT = 1.25;
 // Excalidraw sizes an arrowhead from the length of the end segment: half the
@@ -186,7 +204,7 @@ function normalizeGraph(graph, style, label) {
     if (type.group !== undefined && !groups.has(type.group)) {
       throw new SpecError(`${where}: unknown group "${type.group}"`);
     }
-    const tone = type.tone ?? style.tone;
+    const tone = type.tone ?? style.kindTones[kind] ?? style.tone;
     shade(tone, 1);
     if (type.layer !== undefined && (!Number.isInteger(type.layer) || type.layer < 0)) {
       throw new SpecError(`${where}: layer must be a non-negative integer`);
@@ -205,7 +223,7 @@ function normalizeGraph(graph, style, label) {
         .map((member, memberIndex) => normalizeMember(
           member,
           `${where}.members[${memberIndex}]`,
-          tone === style.tone ? style.highlight : tone,
+          type.tone === undefined || type.tone === style.tone ? style.highlight : type.tone,
         )),
       cells,
       group: type.group ?? null,
@@ -259,77 +277,100 @@ function normalizeGraph(graph, style, label) {
   };
 }
 
-function measure(text, fontSize, style) {
-  const options = { fontFamily: style.fontFamily, charWidthFactor: style.charWidthFactor };
-  return { width: textWidth(text, fontSize, options), height: textHeight(text, fontSize) };
+function measure(text, fontSize, style, fontFamily = style.fontFamily) {
+  return { width: textWidth(text, fontSize, { fontFamily }), height: textHeight(text, fontSize) };
+}
+
+// Fills and strokes of a tone. The sketch style has no colors: white and ink.
+function fillOf(style, tone, level) {
+  return style.preset === "sketch" ? PALETTE.white : shade(tone, level);
+}
+
+function strokeOf(style, tone, level) {
+  return style.preset === "sketch" ? style.ink : shade(tone, level);
+}
+
+// A highlighted row: a stronger fill of its hue, or a gray hatch in sketch.
+function highlightFill(style, hue, level) {
+  return style.preset === "sketch"
+    ? { backgroundColor: shade("gray", 4), fillStyle: "hachure" }
+    : { backgroundColor: shade(hue, level) };
+}
+
+function isMethod(text) {
+  return text.includes("(");
 }
 
 function lineCount(text) {
   return text.split("\n").length;
 }
 
-// A struct with cells is drawn as a record: a colored title bar with the
-// member cells directly below it, without inner padding.
-function isRecord(type) {
-  return type.kind === "struct" && type.cells;
-}
-
+// A type box is a header with the kind badge and the name, then compartments:
+// the note, the fields, and the methods. A struct with cells is a record: every
+// member gets a cell of its own.
 function typeGeometry(type, style) {
-  const record = isRecord(type);
   const fontSize = style.fontSize;
   const nameFontSize = fontSize + 2;
-  const padding = record ? 0 : 14;
-  const gap = record ? 0 : 10;
   const lineHeight = fontSize * LINE_HEIGHT;
   const hasBadge = KINDS[type.kind].badge !== null;
   const hasHeader = type.name !== "";
-  const cellPadding = type.cells ? CELL_PADDING : 0;
-  const textInset = type.cells ? 10 : 6;
-
-  const notePadding = record && type.note !== "" ? 6 : 0;
-  const noteHeight = type.note === "" ? 0 : lineCount(type.note) * lineHeight + 2 * notePadding;
-  const noteGap = noteHeight > 0 && type.members.length > 0 && !record ? 8 : 0;
-  const rowHeights = type.members.map((member) => lineCount(member.text) * lineHeight + 2 * cellPadding);
-  const widths = [
-    ...(type.note === "" ? [] : [measure(type.note, fontSize, style).width + 2 * textInset]),
-    ...type.members.map((member) => measure(member.text, fontSize, style).width + 2 * textInset),
-  ];
-  const bodyWidth = widths.length === 0 ? 0 : Math.max(...widths);
   const nameSize = hasHeader ? measure(type.name, nameFontSize, style) : { width: 0, height: 0 };
-  const headerHeight = hasHeader ? Math.max(record ? 0 : 44, Math.ceil(nameSize.height + 16)) : 0;
-  const nameBoxWidth = hasHeader ? nameSize.width + 28 : 0;
-  const innerWidth = Math.ceil(Math.max(
-    hasBadge ? headerHeight + gap + nameBoxWidth : nameBoxWidth,
-    bodyWidth,
-  ));
-  const hasBody = noteHeight > 0 || rowHeights.length > 0;
-  const bodyTop = padding + headerHeight + (hasHeader && hasBody ? gap : 0);
-  const rowsTop = bodyTop + noteHeight + noteGap;
-  const rowTops = [];
-  let cursor = rowsTop;
-  for (const height of rowHeights) {
-    rowTops.push(cursor);
-    cursor += height;
+  const badgeSize = Math.ceil(nameFontSize * LINE_HEIGHT + 6);
+  const headerHeight = hasHeader ? Math.ceil(Math.max(hasBadge ? badgeSize : 0, nameSize.height) + 2 * BOX.padY) : 0;
+  const headerWidth = hasHeader ? 2 * BOX.padX + (hasBadge ? badgeSize + BOX.badgeGap : 0) + nameSize.width : 0;
+
+  const parts = [];
+  if (type.note !== "") parts.push({ id: "note-cell", cell: false, rows: [{ member: null, text: type.note }] });
+  if (type.cells) {
+    type.members.forEach((member, index) => {
+      parts.push({ id: `member-${index}-cell`, cell: true, rows: [{ member: index, text: member.text }] });
+    });
+  } else {
+    const fields = [];
+    const methods = [];
+    type.members.forEach((member, index) => {
+      (isMethod(member.text) ? methods : fields).push({ member: index, text: member.text });
+    });
+    if (fields.length > 0) parts.push({ id: "fields", cell: false, rows: fields });
+    if (methods.length > 0) parts.push({ id: "methods", cell: false, rows: methods });
   }
-  const height = Math.ceil(hasBody ? cursor + padding : 2 * padding + headerHeight);
+
+  const rowTops = [];
+  const rowHeights = [];
+  let bodyWidth = 0;
+  let cursor = headerHeight;
+  for (const part of parts) {
+    const padY = part.cell ? CELL_PADDING : BOX.padY;
+    part.top = cursor;
+    let rowCursor = cursor + padY;
+    for (const row of part.rows) {
+      const fontFamily = row.member === null ? style.fontFamily : style.codeFontFamily;
+      row.top = rowCursor;
+      row.height = lineCount(row.text) * lineHeight;
+      bodyWidth = Math.max(bodyWidth, measure(row.text, fontSize, style, fontFamily).width + 2 * BOX.padX);
+      if (row.member !== null) {
+        rowTops[row.member] = part.cell ? cursor : rowCursor;
+        rowHeights[row.member] = part.cell ? row.height + 2 * padY : row.height;
+      }
+      rowCursor += row.height;
+    }
+    part.height = rowCursor + padY - cursor;
+    cursor += part.height;
+  }
   return {
-    width: innerWidth + 2 * padding,
-    height,
-    padding,
-    gap,
+    width: Math.ceil(Math.max(headerWidth, bodyWidth, 2 * BOX.padX)),
+    height: Math.ceil(Math.max(cursor, 2 * BOX.padY)),
+    padding: 0,
     fontSize,
     nameFontSize,
-    lineHeight,
+    nameSize,
+    badgeSize,
     headerHeight,
     hasBadge,
     hasHeader,
-    bodyTop,
+    parts,
     rowTops,
     rowHeights,
-    textInset,
-    notePadding,
-    innerWidth,
-    record,
   };
 }
 
@@ -705,13 +746,14 @@ class SceneBuilder {
   }
 
   text(id, text, x, y, fontSize, extra = {}) {
-    const size = measure(text, fontSize, this.style);
+    const fontFamily = extra.fontFamily ?? this.style.fontFamily;
+    const size = measure(text, fontSize, this.style, fontFamily);
     return this.base(id, "text", x, y, size.width, size.height, {
       strokeWidth: 1,
       text,
       originalText: text,
       fontSize,
-      fontFamily: this.style.fontFamily,
+      fontFamily,
       textAlign: "left",
       verticalAlign: "top",
       containerId: null,
@@ -732,6 +774,18 @@ class SceneBuilder {
       fontSize,
       { textAlign: "center", verticalAlign: "middle", containerId: container.id, groupIds },
     );
+  }
+
+  line(id, x, y, width, extra = {}) {
+    return this.base(id, "line", x, y, width, 0, {
+      points: [[0, 0], [width, 0]],
+      lastCommittedPoint: null,
+      startBinding: null,
+      endBinding: null,
+      startArrowhead: null,
+      endArrowhead: null,
+      ...extra,
+    });
   }
 
   arrow(id, points, semantics, extra = {}, { labelled = false } = {}) {
@@ -755,127 +809,114 @@ class SceneBuilder {
   }
 }
 
-function drawGroup(builder, group, layout, prefix, style) {
-  const rectangle = builder.base(`${prefix}group-${group.id}`, "rectangle", layout.x, layout.y, layout.width, layout.height, {
-    strokeColor: shade(group.tone, 4),
-    backgroundColor: shade(group.tone, 1),
+// Clean zones: hachure outside, cross-hatch one level in, a solid pale fill
+// deeper. The title sits on a solid plate, never on the hatch.
+const ZONE_FILLS = ["hachure", "cross-hatch"];
+
+function drawGroup(builder, group, layout, prefix, depth) {
+  const style = builder.style;
+  const id = `${prefix}group-${group.id}`;
+  const sketch = style.preset === "sketch";
+  const fillStyle = sketch ? "solid" : ZONE_FILLS[depth] ?? "solid";
+  const hatched = fillStyle !== "solid";
+  builder.base(id, "rectangle", layout.x, layout.y, layout.width, layout.height, {
+    strokeColor: strokeOf(style, group.tone, 4),
+    backgroundColor: sketch ? "transparent" : shade(group.tone, hatched ? 2 : 1),
+    fillStyle,
     strokeWidth: 1,
-    strokeStyle: "dashed",
+    strokeStyle: sketch ? "dashed" : "solid",
     roundness: { type: 3 },
   });
-  if (group.label !== "") {
-    builder.text(`${prefix}group-${group.id}-label`, group.label, rectangle.x + 20, rectangle.y + 14, style.fontSize);
+  if (group.label === "") return;
+  const labelX = layout.x + 20;
+  const labelY = layout.y + 14;
+  if (hatched) {
+    const size = measure(group.label, style.fontSize, style);
+    builder.base(`${id}-plate`, "rectangle", labelX - 10, labelY - 4, size.width + 20, size.height + 8, {
+      strokeColor: shade(group.tone, 4),
+      backgroundColor: PALETTE.white,
+      strokeWidth: 1,
+      roundness: { type: 3 },
+    });
   }
+  builder.text(`${id}-label`, group.label, labelX, labelY, style.fontSize);
 }
 
-function drawRecord(builder, type, geometry, layout, prefix) {
+// Clean stacks the header and the compartments as filled boxes with sharp
+// corners. Sketch draws one rounded outline and divides it with rules.
+function drawType(builder, type, geometry, layout, prefix) {
+  const style = builder.style;
+  const sketch = style.preset === "sketch";
   const groupIds = [`${prefix}type-${type.id}`];
   const { x, y } = layout;
-  const stroke = type.tone === builder.style.tone ? builder.style.ink : shade(type.tone, 5);
   const outer = builder.base(`${prefix}${type.id}`, "rectangle", x, y, geometry.width, geometry.height, {
-    strokeColor: stroke,
-    backgroundColor: PALETTE.white,
-    groupIds,
-  });
-  if (geometry.hasHeader) {
-    const header = builder.base(`${prefix}${type.id}-header`, "rectangle", x, y, geometry.width, geometry.headerHeight, {
-      strokeColor: stroke,
-      backgroundColor: shade(type.tone, 2),
-      strokeWidth: 1,
-      groupIds,
-    });
-    builder.boundText(header, `${prefix}${type.id}-name`, type.name, geometry.nameFontSize, groupIds);
-  }
-  if (type.note !== "") {
-    builder.base(`${prefix}${type.id}-note-cell`, "rectangle", x, y + geometry.bodyTop, geometry.width,
-      lineCount(type.note) * geometry.lineHeight + 2 * geometry.notePadding, {
-        strokeColor: shade(type.tone, 4),
-        backgroundColor: shade(type.tone, 1),
-        strokeWidth: 1,
-        groupIds,
-      });
-    builder.text(`${prefix}${type.id}-note`, type.note, x + geometry.textInset, y + geometry.bodyTop + geometry.notePadding,
-      geometry.fontSize, { groupIds });
-  }
-  type.members.forEach((member, index) => {
-    const top = y + geometry.rowTops[index];
-    const id = `${prefix}${type.id}-member-${index}`;
-    builder.base(`${id}-cell`, "rectangle", x, top, geometry.width, geometry.rowHeights[index], {
-      strokeColor: shade(type.tone, 4),
-      backgroundColor: member.highlight === null ? PALETTE.white : shade(member.highlight, 3),
-      strokeWidth: 1,
-      groupIds,
-    });
-    builder.text(id, member.text, x + geometry.textInset, top + CELL_PADDING, geometry.fontSize, { groupIds });
-  });
-  return outer;
-}
-
-function drawType(builder, type, geometry, layout, prefix) {
-  if (geometry.record) return drawRecord(builder, type, geometry, layout, prefix);
-  const kind = KINDS[type.kind];
-  const groupIds = [`${prefix}type-${type.id}`];
-  const x = layout.x;
-  const y = layout.y;
-  const outer = builder.base(`${prefix}${type.id}`, "rectangle", x, y, geometry.width, geometry.height, {
-    backgroundColor: shade(type.tone, kind.body),
+    backgroundColor: fillOf(style, type.tone, 1),
     strokeStyle: type.kind === "note" ? "dashed" : "solid",
-    roundness: { type: 3 },
+    roundness: sketch ? { type: 3 } : null,
     groupIds,
   });
 
-  const innerX = x + geometry.padding;
-  const headerY = y + geometry.padding;
   if (geometry.hasHeader) {
-    let nameX = innerX;
+    if (!sketch) {
+      builder.base(`${prefix}${type.id}-header`, "rectangle", x, y, geometry.width, geometry.headerHeight, {
+        backgroundColor: shade(type.tone, 2),
+        strokeWidth: 1,
+        groupIds,
+      });
+    }
+    let nameX = x + BOX.padX;
     if (geometry.hasBadge) {
-      const badge = builder.base(`${prefix}${type.id}-badge`, "ellipse", innerX, headerY, geometry.headerHeight, geometry.headerHeight, {
-        backgroundColor: shade(type.tone, kind.badgeShade),
+      const size = geometry.badgeSize;
+      const badge = builder.base(`${prefix}${type.id}-badge`, "ellipse", nameX, y + (geometry.headerHeight - size) / 2, size, size, {
+        backgroundColor: PALETTE.white,
         strokeWidth: 1,
         groupIds,
       });
-      builder.boundText(badge, `${prefix}${type.id}-badge-text`, kind.badge, geometry.nameFontSize, groupIds);
-      nameX += geometry.headerHeight + geometry.gap;
+      builder.boundText(badge, `${prefix}${type.id}-badge-text`, KINDS[type.kind].badge, geometry.fontSize - 2, groupIds);
+      nameX += size + BOX.badgeGap;
     }
-    const header = builder.base(
-      `${prefix}${type.id}-header`,
-      "rectangle",
-      nameX,
-      headerY,
-      innerX + geometry.innerWidth - nameX,
-      geometry.headerHeight,
-      { backgroundColor: PALETTE.white, strokeWidth: 1, roundness: { type: 3 }, groupIds },
-    );
-    builder.boundText(header, `${prefix}${type.id}-name`, type.name, geometry.nameFontSize, groupIds);
+    builder.text(`${prefix}${type.id}-name`, type.name, nameX, y + (geometry.headerHeight - geometry.nameSize.height) / 2,
+      geometry.nameFontSize, { groupIds });
   }
 
-  if (type.note !== "") {
-    builder.text(`${prefix}${type.id}-note`, type.note, innerX + 6, y + geometry.bodyTop, geometry.fontSize, { groupIds });
-  }
-
-  type.members.forEach((member, index) => {
-    const top = y + geometry.rowTops[index];
-    const height = geometry.rowHeights[index];
-    const id = `${prefix}${type.id}-member-${index}`;
-    if (type.cells) {
-      builder.base(`${id}-cell`, "rectangle", innerX, top, geometry.innerWidth, height, {
-        strokeColor: shade(type.tone, 4),
-        backgroundColor: member.highlight === null ? PALETTE.white : shade(member.highlight, 2),
+  geometry.parts.forEach((part, index) => {
+    const top = y + part.top;
+    const cellHighlight = part.cell ? type.members[part.rows[0].member].highlight : null;
+    if (sketch) {
+      if (part.top > 0) builder.line(`${prefix}${type.id}-rule-${index}`, x, top, geometry.width, { groupIds });
+      if (cellHighlight !== null) {
+        builder.base(`${prefix}${type.id}-${part.id}`, "rectangle", x, top, geometry.width, part.height, {
+          ...highlightFill(style, cellHighlight, 3),
+          strokeColor: "transparent",
+          strokeWidth: 1,
+          groupIds,
+        });
+      }
+    } else {
+      builder.base(`${prefix}${type.id}-${part.id}`, "rectangle", x, top, geometry.width, part.height, {
+        backgroundColor: cellHighlight === null ? shade(type.tone, 1) : shade(cellHighlight, 3),
         strokeWidth: 1,
-        groupIds,
-      });
-    } else if (member.highlight !== null) {
-      builder.base(`${id}-highlight`, "rectangle", innerX, top, geometry.innerWidth, height, {
-        strokeColor: "transparent",
-        backgroundColor: shade(member.highlight, 2),
-        strokeWidth: 1,
-        roughness: 0,
         groupIds,
       });
     }
-    builder.text(id, member.text, innerX + geometry.textInset, top + (type.cells ? CELL_PADDING : 0), geometry.fontSize, {
-      groupIds,
-    });
+    for (const row of part.rows) {
+      if (row.member === null) {
+        builder.text(`${prefix}${type.id}-note`, row.text, x + BOX.padX, y + row.top, geometry.fontSize, { groupIds });
+        continue;
+      }
+      const id = `${prefix}${type.id}-member-${row.member}`;
+      const highlight = type.members[row.member].highlight;
+      if (highlight !== null && !part.cell) {
+        builder.base(`${id}-highlight`, "rectangle", x + 1, y + row.top, geometry.width - 2, row.height, {
+          ...highlightFill(style, highlight, 2),
+          strokeColor: "transparent",
+          strokeWidth: 1,
+          roughness: 0,
+          groupIds,
+        });
+      }
+      builder.text(id, row.text, x + BOX.padX, y + row.top, geometry.fontSize, { fontFamily: style.codeFontFamily, groupIds });
+    }
   });
   return outer;
 }
@@ -898,7 +939,7 @@ function drawRelation(builder, relation, edge, outers, prefix) {
     ...semantics,
     start: relation.dot && semantics.start === null ? "dot" : semantics.start,
   }, {
-    strokeColor: relation.tone === null ? builder.style.ink : shade(relation.tone, 5),
+    strokeColor: relation.tone === null ? builder.style.ink : strokeOf(builder.style, relation.tone, 5),
     startBinding: { elementId: from.id, focus: 0, gap: 1 },
     endBinding: { elementId: to.id, focus: 0, gap: 1 },
   }, { labelled: relation.label !== "" });
@@ -957,7 +998,7 @@ async function layoutGraph(elk, graph, style, prefix) {
 
   const depth = (group) => (group.parent === null ? 0 : 1 + depth(graph.groups.get(group.parent)));
   const groups = [...graph.groups.values()].sort((a, b) => depth(a) - depth(b));
-  for (const group of groups) drawGroup(builder, group, layoutNodes.get(group.id), prefix, style);
+  for (const group of groups) drawGroup(builder, group, layoutNodes.get(group.id), prefix, depth(group));
 
   const outers = new Map();
   for (const type of graph.types.values()) {
@@ -975,7 +1016,7 @@ function normalizeLegend(items, style) {
     const where = `legend[${index}]`;
     const label = textOf(item?.label, `${where}.label`);
     if (label === "") throw new SpecError(`${where}.label is required`);
-    const tone = item.tone ?? style.tone;
+    const tone = item.tone ?? style.kindTones[item.kind] ?? style.tone;
     shade(tone, 1);
     if (item.kind !== undefined) {
       if (!KINDS[item.kind]?.badge) throw new SpecError(`${where}.kind must be class, interface, or abstract`);
@@ -990,7 +1031,12 @@ function normalizeLegend(items, style) {
       shade(hue, 1);
       return { type: "highlight", tone: hue, label };
     }
-    if (item.tone !== undefined) return { type: "tone", tone, label };
+    if (item.tone !== undefined) {
+      if (style.preset === "sketch") {
+        throw new SpecError(`${where}: the sketch style has no colors; remove the tone item or use the clean style`);
+      }
+      return { type: "tone", tone, label };
+    }
     throw new SpecError(`${where} needs kind, relation, highlight, or tone`);
   });
 }
@@ -1015,7 +1061,7 @@ function drawLegend(builder, items, left, top, maxWidth) {
     if (item.type === "kind") {
       const kind = KINDS[item.kind];
       const badge = builder.base(`${id}-badge`, "ellipse", x, y, markerSize, markerSize, {
-        backgroundColor: shade(item.tone, kind.badgeShade),
+        backgroundColor: fillOf(style, item.tone, 2),
         strokeWidth: 1,
         groupIds,
       });
@@ -1023,16 +1069,16 @@ function drawLegend(builder, items, left, top, maxWidth) {
     } else if (item.type === "relation") {
       const semantics = RELATIONS[item.relation];
       builder.arrow(`${id}-line`, [[x, y + markerSize / 2], [x + markerWidth, y + markerSize / 2]], semantics, {
-        strokeColor: item.tone === null ? style.ink : shade(item.tone, 5),
+        strokeColor: item.tone === null ? style.ink : strokeOf(style, item.tone, 5),
         groupIds,
       });
     } else {
       // A tone swatch shows a type: title bar color and outline. A highlight
       // swatch shows a highlighted row: a stronger fill without outline.
       builder.base(`${id}-swatch`, "rectangle", x, y + 2, markerSize, markerSize - 4, {
-        strokeColor: item.type === "tone" ? shade(item.tone, 5) : "transparent",
-        backgroundColor: shade(item.tone, item.type === "tone" ? 2 : 3),
-        strokeWidth: item.type === "tone" ? 2 : 1,
+        ...(item.type === "tone" ? { backgroundColor: shade(item.tone, 2) } : highlightFill(style, item.tone, 2)),
+        strokeColor: item.type === "tone" ? style.ink : "transparent",
+        strokeWidth: 1,
         groupIds,
       });
     }
@@ -1043,10 +1089,31 @@ function drawLegend(builder, items, left, top, maxWidth) {
   });
 }
 
+// `style` is a preset name, or an object with an optional `preset` and fields
+// that override it.
+function resolveStyle(value) {
+  const fields = typeof value === "string" ? { preset: value } : value ?? {};
+  if (typeof fields !== "object" || Array.isArray(fields)) {
+    throw new SpecError("style must be a preset name or an object");
+  }
+  const preset = fields.preset ?? DEFAULT_PRESET;
+  if (!Object.hasOwn(STYLE_PRESETS, preset)) {
+    throw new SpecError(`style must be "clean" or "sketch", not "${preset}"`);
+  }
+  const style = { ...DEFAULT_STYLE, ...STYLE_PRESETS[preset], ...fields, preset };
+  for (const key of ["fontFamily", "codeFontFamily"]) {
+    if (!MEASURED_FONT_FAMILIES.includes(style[key])) {
+      throw new SpecError(`style.${key} must be one of ${MEASURED_FONT_FAMILIES.join(", ")}`);
+    }
+  }
+  return style;
+}
+
 export function normalizeSpec(spec) {
   if (!spec || typeof spec !== "object") throw new SpecError("Spec must be a JSON object");
-  const style = { ...DEFAULT_STYLE, ...(spec.style ?? {}) };
+  const style = resolveStyle(spec.style);
   shade(style.tone, 1);
+  for (const tone of Object.values(style.kindTones)) shade(tone, 1);
   if (![0, 1, 2].includes(style.roughness)) throw new SpecError("style.roughness must be 0, 1, or 2");
   if (!["auto", true, false].includes(style.memberCells)) {
     throw new SpecError('style.memberCells must be "auto", true, or false');
@@ -1144,7 +1211,7 @@ export async function buildTypeMap(spec) {
         ? [[box.x - panelGap / 2, headerHeight], [box.x - panelGap / 2, contentBottom]]
         : [[0, box.y - panelGap / 2], [contentRight, box.y - panelGap / 2]];
       divider.base(`divider-${index + 1}`, "line", line[0][0], line[0][1], line[1][0] - line[0][0], line[1][1] - line[0][1], {
-        strokeColor: shade("gray", 3),
+        strokeColor: strokeOf(style, "gray", 3),
         strokeWidth: 1,
         strokeStyle: "dashed",
         points: [[0, 0], [line[1][0] - line[0][0], line[1][1] - line[0][1]]],

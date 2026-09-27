@@ -62,9 +62,10 @@ most capable model with a brief instead of a fork.
    defaults. Apply the chosen style to the whole diagram: typography, shapes,
    connectors, fills, background, annotations, and legends, in every diagram
    mode. Preserve the meaning of notation such as UML arrowheads.
-   - If the style is unspecified and a choice would help, offer two or three
-     directions, such as hand-drawn, clean technical, or minimal presentation.
-     This is optional; an explicit style request needs no selection step.
+   - Use one of the two named styles in
+     [references/styles.md](references/styles.md): `clean` (smooth, colored)
+     or `sketch` (hand-drawn, ink only). Use the style that the user names. If
+     the user names no style, use `clean`. Do not ask the user to choose.
    - For a style brief, visual reference, or known presentation, document, site,
      or brand system, read
      [references/theme-adaptation.md](references/theme-adaptation.md) and inspect

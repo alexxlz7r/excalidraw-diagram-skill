@@ -32,7 +32,7 @@ hand.
 ```json
 {
   "title": "Dependency inversion",
-  "style": { "roughness": 1, "tone": "gray" },
+  "style": "clean",
   "arrange": "row",
   "panels": [
     {
@@ -66,21 +66,32 @@ an array of lines.
 | --- | --- | --- |
 | `title` | none | Diagram title, 1.6 × the font size. |
 | `subtitle` | none | One sentence with the conclusion of the diagram. |
-| `style` | see below | Scene-wide style. |
+| `style` | `clean` | Named style: `"clean"` or `"sketch"`, or an object with `preset` and overrides. See [styles.md](styles.md). |
 | `panels` | none | Independent graphs, each laid out separately. A dashed divider separates them. |
 | `arrange` | `row` | Panel placement: `row` or `column`. |
 | `align` | `top` | Vertical alignment of panels in a row: `top`, or `bottom` to put the last layer of every panel on one line, as in a before-and-after comparison. |
 | `legend` | none | Legend items below the diagram. |
 
-`style` fields: `fontSize` (20), `fontFamily` (3), `charWidthFactor` (required
-for a font family other than 3), `roughness` (0, 1, or 2; default 0),
-`background` (`#ffffff`), `ink` (`#1e1e1e`), `tone` (`gray`), the default
-tone of types and groups, `memberCells` (`auto`: cells for structs, a
-plain list for other kinds; or `true` or `false` for all types), and
-`highlight` (`yellow`), the highlight hue for types in the default tone.
+`style` object fields: `preset` (`clean` or `sketch`), `fontSize` (20),
+`fontFamily`, the label font (`clean`: 6, Nunito; `sketch`: 5, Excalifont),
+`codeFontFamily`, the member font (`clean`: 3, Cascadia; `sketch`: 5),
+`roughness` (`clean`: 0; `sketch`: 1), `background` (`#ffffff`), `ink`
+(`#1e1e1e`), `tone` (`gray`), the default tone of groups and structs,
+`kindTones`, the default tone per kind (`clean`: class `orange`, interface
+`blue`, abstract `violet`), `memberCells` (`auto`: cells for structs, a plain
+list for other kinds; or `true` or `false` for all types), and `highlight`
+(`yellow`), the highlight hue for types without their own tone. A font family
+must have measured widths: 1, 3, 5, 6, 7, 8, or 9.
 
-A struct with cells is drawn as a record: a title bar in the type tone with
-the member cells directly below it.
+A type box has a header with the kind badge and the name, then compartments:
+the note, the fields, and the methods. A member that contains `(` is a method;
+other members are fields. Each compartment keeps the order of the spec.
+`clean` stacks the header and the compartments as boxes with sharp corners:
+the header in the type tone, the compartments in a lighter shade. `sketch`
+draws one rounded ink outline and divides the compartments with rules.
+
+A struct with cells is drawn as a record: a header with the member cells
+directly below it, one cell per member.
 
 Legend items have a `label` and one marker: `{ kind, tone }` for a C/I/A
 badge, `{ tone }` for a type color, `{ highlight }` (a hue or `true`) for a
@@ -106,7 +117,7 @@ highlighted row, or `{ relation, tone }` for a connector sample.
 | `name` | `id` | Header text. |
 | `kind` | `class` | `class` (C), `interface` (I), `abstract` (A), `struct` (no badge), or `note` (dashed box without a header). Set `struct` explicitly for C or kernel structures; the default draws a C badge. |
 | `group` | none | Group ID. |
-| `tone` | style tone | Palette hue for the fills. |
+| `tone` | kind tone or style tone | Palette hue for the fills. |
 | `note` | none | Responsibility line or lines above the members. For `kind: "note"`, use `text`. |
 | `members` | `[]` | Strings, or `{ id, text, highlight }`. `highlight` is a hue, or `true` for the type tone (the style highlight hue for a type in the default tone). |
 | `cells` | style | `true` draws each member in its own cell; `false` draws a plain list. |
@@ -147,13 +158,18 @@ type with several pointers share the next layer and are entered from above.
 
 Tones are the Excalidraw color picker hues: `gray`, `red`, `pink`, `grape`,
 `violet`, `blue`, `cyan`, `teal`, `green`, `yellow`, `orange`, and `bronze`.
-Each hue has the five picker shades. The generator uses the lightest shades
-for fills, the middle shades for badges, and the darkest shade for connector
-and group strokes. Text always uses the ink color.
+Each hue has the five picker shades. In `clean`, the generator uses the
+second shade for type headers and zone hatches, the lightest shade for
+compartments and nested zones, and the darker shades for connector and zone
+strokes. Text always uses the ink color. `sketch` uses no tones: every stroke
+is ink, and a `tone` legend item is an error.
 
-Use the default gray for most types. Give a hue only to types and groups with
-a specific role, such as the stable abstraction, the shared state, or the
-problem. Explain each hue with a group label, a panel title, or a legend.
+In `clean`, the header color shows the kind: orange classes, blue
+interfaces, violet abstract classes. To show a role instead, such as the
+stable abstraction or the shared state, give the type a `tone`, and explain
+each role hue with a group label, a panel title, or a legend. Groups are
+zones: an outer group is hatched, a nested group is cross-hatched, and a
+deeper group has a solid pale fill. The group title sits on a solid plate.
 
 ## Limits
 
@@ -178,5 +194,5 @@ problem. Explain each hue with a group label, a panel title, or a legend.
   in the note text.
 - Connectors are polylines. When a user moves a type in Excalidraw, the bound
   connectors keep their bend points and move only their ends.
-- Text sizes use the monospace estimate of `scripts/layout.mjs`. For another
-  font family, measure and pass `charWidthFactor`.
+- Text sizes use the measured character widths of `scripts/layout.mjs`. The
+  sum ignores kerning, so a box can be a little wider than its text.

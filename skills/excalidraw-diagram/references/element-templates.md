@@ -189,44 +189,42 @@ Use this compound element for the type-map notation in
 [application-design.md](application-design.md#letter-badge-notation), which
 defines the letters and colors. Build it from native editable shapes and text.
 
-Measure the name and optional body first, using `scripts/layout.mjs` for
-monospace or actual font measurements for another family. Let `P` be the outer
-padding (start at 20), `G` the circle-to-name gap (12–16), and `D` the shared
-badge diameter/header height (start at 56–64 for a 24 px name). Grow `D` if the
-name wraps and needs more height. Set:
+Measure the name and every member with `scripts/layout.mjs`: the name in the
+label font of the style, the members in its code font. See
+[styles.md](styles.md). Let `X` be the text inset (12), `Y` the compartment
+padding (8), and `D` the badge diameter (`1.25 × name size + 6`). Sort the
+members into fields and methods: a member that contains `(` is a method. Set:
 
 ```text
-nameWidth = measured name width + 2 × name padding
-innerWidth = max(D + G + nameWidth, measured body width)
-outerWidth = innerWidth + 2 × P
-outerHeight = 2 × P + D + (body present ? body gap + body height : 0)
+headerHeight = max(D, name height) + 2 × Y
+headerWidth = 2 × X + D + badge gap (10) + name width
+compartmentHeight = 2 × Y + line count × line height
+width = max(headerWidth, widest member + 2 × X)
+height = headerHeight + sum of compartment heights
 ```
 
-For an outer container at `(x, y)`, assemble:
+For a type at `(x, y)`, assemble:
 
 | Element | Position / size | Binding |
 | --- | --- | --- |
-| Rounded outer rectangle | `(x, y)`, `outerWidth × outerHeight` | Relationship arrows bind here |
-| Badge ellipse | `(x + P, y + P)`, `D × D` | Bound letter text |
-| Badge letter | Centered in the ellipse; size about `D / 2` | `containerId: badge.id` |
-| Rounded name rectangle | `(x + P + D + G, y + P)`, remaining inner width × `D` | Bound name text |
-| Type name | Centered in the name rectangle | `containerId: header.id` |
-| Optional body text | `(x + P, y + P + D + body gap)`, measured size | `containerId: null` |
+| Outer rectangle | `(x, y)`, `width × height` | Relationship arrows bind here |
+| Header (`clean` only) | `(x, y)`, `width × headerHeight`, tone shade 2 | none |
+| Badge ellipse | `(x + X, y + (headerHeight - D) / 2)`, `D × D`, white | Bound letter text |
+| Type name | After the badge, centered on the header line | `containerId: null` |
+| Fields, methods | One rectangle per compartment in `clean`; one rule line above each compartment in `sketch` | none |
+| Member text | `(x + X, compartment top + Y + line offset)`, code font | `containerId: null` |
 
-Use `roundness: { "type": 3 }` for both rectangles and solid badge fills.
-Resolve the name rectangle's subtle fill from the same role accent as the
-outer container, using the type-kind strengths in `application-design.md`.
-Keep the letter within the ellipse's inscribed text area. Share one
-`groupIds: [typeGroupId]` across all parts so moving the type carries its badge,
-name, and body. Give each part its own ID and seed. Set reciprocal
-`boundElements` entries on the badge and header for their text, and on the
-outer rectangle for relationship arrows. The body uses explicit positioning
-inside the group so binding it does not recenter it across the whole type.
+In `clean`, use sharp corners (`roundness: null`), the tone shade 2 for the
+header, and shade 1 for the outer rectangle and the compartments. In
+`sketch`, use `roundness: { "type": 3 }` on the outer rectangle, white fills,
+and ink strokes. Share one `groupIds: [typeGroupId]` across all parts so
+moving the type carries its badge, name, and members. Give each part its own
+ID and seed. Set reciprocal `boundElements` entries on the badge for its
+letter, and on the outer rectangle for relationship arrows.
 
-For aligned examples, derive shared dimensions from the widest header/body
-and tallest content among peers. Inspect that badges remain circular, letters
-are centered, headers do not collide with badges, and body text stays below
-the header at the delivery width.
+For aligned examples, derive shared dimensions from the widest header and
+member among peers. Inspect that badges remain circular, letters are centered,
+and every member sits inside its compartment at the delivery width.
 
 ## UML relationship connectors
 

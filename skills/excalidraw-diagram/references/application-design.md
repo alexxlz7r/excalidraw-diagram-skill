@@ -41,33 +41,31 @@ below and calculates the layout. See [type-map-spec.md](type-map-spec.md).
 
 ### Letter-badge notation
 
-Use the same rounded type container for all three kinds. Inside its top row,
-place a colored circle at the left and the type name in a separate rounded
-rectangle at the right. Put the optional responsibility, fields, or methods
-below this row. The letter identifies the kind of type; in role-colored maps,
-the fill hue identifies architectural role and its strength distinguishes type
-kind, as described below.
+Draw every type as a header and compartments. The header holds a circle with
+the kind letter at the left and the type name after it. Below the header come
+the optional responsibility, the fields, and the methods, each in its own
+compartment. The named style sets the form: `clean` stacks filled boxes with
+sharp corners, and `sketch` draws one rounded outline divided by rules. See
+[styles.md](styles.md).
 
-| Kind | Badge | Badge-only palette (when role colors are unused) |
+| Kind | Badge | `clean` header tone |
 | --- | --- | --- |
-| Concrete class | `C` | Pale pink `#FECACA` |
-| Interface | `I` | Pale blue `#A5D8FF` |
-| Abstract class | `A` | Pale violet `#DDD6FE` |
+| Concrete class | `C` | `orange` |
+| Interface | `I` | `blue` |
+| Abstract class | `A` | `violet` |
 
-Keep the letters and their meanings stable across themes, with dark readable
-text and outlines. When role colors are active, tint each badge with a stronger
-shade of its container's role color instead of the badge-only palette; the
-letter carries the kind independently. Inherit typography, roughness, corner
-treatment, and stroke weights from the diagram's resolved style. Add a compact
-letter legend when the audience may not know the notation.
+Keep the letters and their meanings stable across styles, with dark readable
+text and outlines. The letter carries the kind independently of color, so a
+role color can replace the kind color. Add a compact letter legend when the
+audience may not know the notation.
 
 Center a single uppercase letter in each true circle (`width === height`).
-Align the circle and name box on one horizontal centerline, fully inside the
-outer boundary. Size the header from the name and the body from its content;
-an empty body should collapse to a compact header-only type. Use the compound
-element recipe in
+Align the circle and the name on one horizontal centerline inside the header.
+Size the header from the name and each compartment from its content; a type
+without members collapses to a header-only box. Use the compound element
+recipe in
 [element-templates.md](element-templates.md#type-container-with-letter-badge)
-for sizing, grouping, and text bindings.
+for sizing and grouping.
 
 The `A` badge describes the type; mark individual abstract operations only when
 the distinction matters, for example `render() {abstract}`. Add relationships
@@ -76,47 +74,15 @@ illustrative/proposed.
 
 ### Color by architectural role
 
-Choose the role categories from the actual design: components/controllers/
-services, domain/adapters/infrastructure, or another useful partition. Assign
-one base hue per role and explain the mapping in a small legend or labeled
-regions. Within each role, use lighter fills for interfaces, intermediate fills
-for abstract classes, and stronger fills for concrete classes. Keep the same
-ordering across roles; retain C/I/A letters as the explicit, non-color cue.
+In `clean`, a role color can replace the kind color. Choose the role
+categories from the actual design: components/controllers/services,
+domain/adapters/infrastructure, or another useful partition. Assign one
+palette hue per role, give it to every type of the role (`tone` in a type map
+spec), and explain the mapping in a small legend or labeled zones. The header
+uses the second shade of the hue and the compartments the lightest shade; the
+C/I/A letters keep the kind visible.
 
-Aim for translucent washes with a noticeable difference between type kinds.
-These are starting blend strengths, adjustable to the requested style and
-actual canvas:
-
-| Type kind | Outer fill | Name-box fill | Badge fill |
-| --- | --- | --- | --- |
-| Interface (`I`) | 8% | 3% | 20% |
-| Abstract class (`A`) | 16% | 5% | 32% |
-| Concrete class (`C`) | 26% | 7% | 44% |
-
-For a stable SVG/PNG result, preblend each RGB channel as
-`fill = round(canvas × (1 - strength) + roleAccent × strength)`. Keep element
-`opacity: 100` so outlines and text stay crisp. Give the name box a barely
-visible wash of the same role accent, using the name-box strengths above. This
-keeps the header visually connected to the type while remaining lighter than
-its body. Recheck contrast on every resulting fill. Example base accents on
-white, adjustable to the host theme:
-
-| Illustrative role | Base accent |
-| --- | --- |
-| Component | Blue `#3B82F6` |
-| Controller | Orange `#F97316` (peach when blended) |
-| Service | Green `#10B981` (mint when blended) |
-
-Compare I/A/C fills side by side at delivery width: they should remain one
-recognizable color family while their strengths are visibly distinct. Adjust
-the spacing between strengths if the export makes them look identical. A
-compact same-hue I/A/C swatch legend can explain this second visual dimension.
-If the user prefers the same wash for interfaces and abstract classes, retain
-their separate I/A badges.
-
-Store these as scene-local role accents, independent of success/error states.
-For transparent exports, blend against the known destination background. If
-the background is unknown, use the normal opaque canvas for predictable tints.
+`sketch` has no color. Show roles in `sketch` with zones and their titles.
 
 ### Simplified UML connectors
 

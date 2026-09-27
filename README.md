@@ -112,12 +112,18 @@ esbuild are build-only dependencies; setup prunes them after producing the
 bundle, avoiding the previous persistent ~248 MB dependency tree. The browser
 binary remains required for pixel rendering and embedded-scene verification.
 
-## Themes
+## Styles and themes
 
-The user's style request applies to the whole diagram, across all diagram
-types. If style is unspecified, the agent can offer a few directions such as
-hand-drawn, clean technical, or minimal presentation. It resolves remaining
-theme values before layout:
+The skill has two named styles. Name one in the request, for example "draw it
+in the sketch style":
+
+- `clean` (default): smooth lines, Nunito labels, Cascadia code, colored
+  type headers, and hatched zones;
+- `sketch`: rough lines, Excalifont for all text, and ink outlines without
+  color.
+
+The style applies to the whole diagram, across all diagram types. The agent
+resolves the remaining theme values, such as colors, before layout:
 
 - standalone diagram or unknown destination: immutable built-in fallback;
 - known presentation, document, site, or brand system: a derived theme based
@@ -181,6 +187,7 @@ skills/excalidraw-diagram/
     theme-adaptation.md         Host-artifact theme derivation
     application-design.md       Lightweight UML-like application diagrams
     type-map-spec.md            Spec format for the type map generator
+    styles.md                   The clean and sketch styles
     design-guidance.md          Visual patterns and quality criteria
     element-templates.md        Excalidraw element examples
     json-schema.md              Scene and binding contract
@@ -191,6 +198,8 @@ skills/excalidraw-diagram/
     render_template.html        Browser export bridge
     package.json                Runtime and build dependencies
     layout.mjs                 Shared text and container sizing helpers
+    font-metrics.json           Measured character widths per font family
+    measure_fonts.mjs           Measures font-metrics.json in the renderer
     type_map.mjs                Type map generator with ELK layout
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint

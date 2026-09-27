@@ -329,3 +329,98 @@ test("labels sit on the middle of the connector path", async () => {
   assert.ok(Math.abs(label.x + label.width / 2 - (arrow.x + mx)) < 1);
   assert.ok(Math.abs(label.y + label.height / 2 - (arrow.y + my)) < 1);
 });
+
+const zoneSpec = (style) => ({
+  ...(style === undefined ? {} : { style }),
+  groups: [
+    { id: "backend", label: "backend", tone: "blue" },
+    { id: "data", label: "data", parent: "backend", tone: "green" },
+    { id: "rows", label: "rows", parent: "data" },
+  ],
+  types: [
+    { id: "OrderRepository", kind: "interface", group: "backend", members: ["+ save(order)", "+ delete(order)"] },
+    { id: "SqlOrderRepository", group: "data", members: ["+ save(order)", "- db: Connector", "+ delete(order)"] },
+    { id: "Row", kind: "struct", group: "rows", members: ["id", "total"] },
+  ],
+  relations: [{ from: "SqlOrderRepository", to: "OrderRepository", type: "implements" }],
+});
+
+test("clean is the default style: sans labels, monospace members, smooth lines", async () => {
+  const elements = byId(await buildTypeMap(zoneSpec()));
+  assert.equal(elements.get("SqlOrderRepository-name").fontFamily, 6);
+  assert.equal(elements.get("SqlOrderRepository-member-0").fontFamily, 3);
+  assert.equal(elements.get("group-backend-label").fontFamily, 6);
+  for (const element of elements.values()) assert.equal(element.roughness, 0, element.id);
+});
+
+test("style selects a preset by name, with optional overrides", async () => {
+  const sketch = await buildTypeMap(zoneSpec("sketch"));
+  for (const element of sketch.elements) {
+    assert.equal(element.roughness, 1, element.id);
+    if (element.type === "text") assert.equal(element.fontFamily, 5, element.id);
+  }
+  const small = byId(await buildTypeMap(zoneSpec({ preset: "sketch", fontSize: 16 })));
+  assert.equal(small.get("SqlOrderRepository-member-0").fontSize, 16);
+  await assert.rejects(
+    () => buildTypeMap(zoneSpec("fancy")),
+    (error) => error instanceof SpecError && /style must be "clean" or "sketch"/.test(error.message),
+  );
+});
+
+test("clean draws a class as stacked compartments: header, fields, methods", async () => {
+  const elements = byId(await buildTypeMap(zoneSpec()));
+  const header = elements.get("SqlOrderRepository-header");
+  const fields = elements.get("SqlOrderRepository-fields");
+  const methods = elements.get("SqlOrderRepository-methods");
+  assert.equal(header.backgroundColor, PALETTE.shades.orange[1], "a class header is orange");
+  assert.equal(elements.get("OrderRepository-header").backgroundColor, PALETTE.shades.blue[1], "an interface header is blue");
+  assert.equal(fields.backgroundColor, PALETTE.shades.orange[0]);
+  assert.equal(header.y + header.height, fields.y);
+  assert.equal(fields.y + fields.height, methods.y);
+  const inside = (text, box) => text.y >= box.y && text.y + text.height <= box.y + box.height;
+  assert.ok(inside(elements.get("SqlOrderRepository-member-1"), fields), "the field sits in the fields compartment");
+  assert.ok(inside(elements.get("SqlOrderRepository-member-0"), methods), "a method sits in the methods compartment");
+  assert.ok(inside(elements.get("SqlOrderRepository-member-2"), methods));
+  assert.equal(elements.has("OrderRepository-fields"), false, "an interface without fields has no fields compartment");
+  for (const box of [header, fields, methods]) assert.equal(box.roundness, null, `${box.id} has sharp corners`);
+});
+
+test("sketch draws a class as one rounded box divided by rules, without color", async () => {
+  const scene = await buildTypeMap(zoneSpec("sketch"));
+  const elements = byId(scene);
+  assert.notEqual(elements.get("SqlOrderRepository").roundness, null);
+  const rules = (id) => scene.elements.filter((element) => element.type === "line" && element.id.startsWith(`${id}-rule-`));
+  assert.equal(rules("SqlOrderRepository").length, 2, "rules under the header and under the fields");
+  assert.equal(rules("OrderRepository").length, 1);
+  for (const element of scene.elements) {
+    assert.ok(["transparent", PALETTE.white].includes(element.backgroundColor), `${element.id} has no color fill`);
+    if (element.type !== "text") assert.equal(element.strokeColor, PALETTE.black, `${element.id} is drawn in ink`);
+  }
+});
+
+test("clean zones hatch below their types, with the title on a solid plate", async () => {
+  const scene = await buildTypeMap(zoneSpec());
+  const elements = byId(scene);
+  const order = new Map(scene.elements.map((element, index) => [element.id, index]));
+  assert.equal(elements.get("group-backend").fillStyle, "hachure");
+  assert.equal(elements.get("group-backend").backgroundColor, PALETTE.shades.blue[1]);
+  assert.equal(elements.get("group-data").fillStyle, "cross-hatch");
+  assert.equal(elements.get("group-rows").fillStyle, "solid");
+  assert.ok(order.get("group-backend") < order.get("OrderRepository"));
+  assert.ok(order.get("group-data") < order.get("SqlOrderRepository"));
+  const plate = elements.get("group-backend-plate");
+  const label = elements.get("group-backend-label");
+  assert.equal(plate.fillStyle, "solid");
+  assert.ok(label.x >= plate.x && label.x + label.width <= plate.x + plate.width, "the title fits its plate");
+  assert.ok(order.get("group-backend-plate") < order.get("group-backend-label"));
+  for (const id of ["OrderRepository", "SqlOrderRepository", "Row"]) {
+    assert.notEqual(elements.get(id).backgroundColor, "transparent", `${id} hides the hatch`);
+  }
+});
+
+test("sketch has no colors, so a tone legend item is an error", async () => {
+  await assert.rejects(
+    () => buildTypeMap({ ...zoneSpec("sketch"), legend: [{ tone: "blue", label: "backend" }] }),
+    (error) => error instanceof SpecError && /sketch/.test(error.message),
+  );
+});
