@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 /** Generate an Excalidraw type map from a compact JSON spec, laid out with ELK. */
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { textHeight } from "./layout.mjs";
 import {
   appendLegend,
@@ -11,11 +8,16 @@ import {
   bindArrow,
   bounds,
   drawHeading,
+  drawZone,
+  elkMinimumSize,
   END_SEGMENT,
   endSegment,
   fillOf,
+  FLOW_SIDES,
   highlightFill,
+  labelArrow,
   LINE_HEIGHT,
+  loadElk,
   measure,
   PALETTE,
   requireId,
@@ -31,8 +33,6 @@ import {
 } from "./scene.mjs";
 
 export { PALETTE, SpecError } from "./scene.mjs";
-
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const KINDS = {
   class: { badge: "C" },
@@ -299,18 +299,6 @@ function memberCenterY(geometry, memberIndex) {
 const FORWARD_SIDE = { RIGHT: "EAST", LEFT: "WEST" };
 const BACKWARD_SIDE = { RIGHT: "WEST", LEFT: "EAST" };
 
-// ELK 0.12 transposes a compound node's minimum size for vertical layered layouts.
-function minimumSize(direction, width) {
-  return direction === "DOWN" || direction === "UP" ? `(0,${width})` : `(${width},0)`;
-}
-
-const LAYOUT_SIDES = {
-  DOWN: ["SOUTH", "NORTH"],
-  UP: ["NORTH", "SOUTH"],
-  RIGHT: ["EAST", "WEST"],
-  LEFT: ["WEST", "EAST"],
-};
-
 function center(node) {
   return { x: node.x + node.width / 2, y: node.y + node.height / 2 };
 }
@@ -342,7 +330,7 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
         ...containerOptions,
         "elk.padding": `[top=${Math.ceil(24 + labelHeight)},left=24,bottom=24,right=24]`,
         "elk.nodeSize.constraints": "MINIMUM_SIZE",
-        "elk.nodeSize.minimum": minimumSize(graph.direction, Math.ceil(label.width + 64)),
+        "elk.nodeSize.minimum": elkMinimumSize(graph.direction, Math.ceil(label.width + 64)),
       },
       children: [],
     });
@@ -417,7 +405,7 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
   // spread evenly along the side that faces the layout flow. A free port can
   // land on a corner of a narrow type.
   if (draft) {
-    const [outSide, inSide] = LAYOUT_SIDES[graph.direction];
+    const [outSide, inSide] = FLOW_SIDES[graph.direction];
     const vertical = outSide === "SOUTH" || outSide === "NORTH";
     const slots = new Map();
     const add = (typeId, side, plan, end, otherId) => {
@@ -507,18 +495,6 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
   };
 }
 
-async function loadElk() {
-  try {
-    const { default: ELK } = await import("elkjs/lib/elk.bundled.js");
-    return new ELK();
-  } catch (error) {
-    if (error?.code === "ERR_MODULE_NOT_FOUND") {
-      throw new SpecError(`elkjs is not installed.\nRun: ${path.join(SCRIPT_DIR, "setup_renderer.sh")}`);
-    }
-    throw error;
-  }
-}
-
 function flattenLayout(node, into = new Map()) {
   for (const child of node.children ?? []) {
     into.set(child.id, child);
@@ -582,37 +558,6 @@ function resolveSides(graph, draft) {
 
 // Clean zones: hachure outside, cross-hatch one level in, a solid pale fill
 // deeper. The title sits on a solid plate, never on the hatch.
-const ZONE_FILLS = ["hachure", "cross-hatch"];
-
-function drawGroup(builder, group, layout, prefix, depth) {
-  const style = builder.style;
-  const id = `${prefix}group-${group.id}`;
-  const sketch = style.preset === "sketch";
-  const fillStyle = sketch ? "solid" : ZONE_FILLS[depth] ?? "solid";
-  const hatched = fillStyle !== "solid";
-  builder.base(id, "rectangle", layout.x, layout.y, layout.width, layout.height, {
-    strokeColor: strokeOf(style, group.tone, 4),
-    backgroundColor: sketch ? "transparent" : shade(group.tone, hatched ? 2 : 1),
-    fillStyle,
-    strokeWidth: 1,
-    strokeStyle: sketch ? "dashed" : "solid",
-    roundness: { type: 3 },
-  });
-  if (group.label === "") return;
-  const labelX = layout.x + 20;
-  const labelY = layout.y + 14;
-  if (hatched) {
-    const size = measure(group.label, style.fontSize, style);
-    builder.base(`${id}-plate`, "rectangle", labelX - 10, labelY - 4, size.width + 20, size.height + 8, {
-      strokeColor: shade(group.tone, 4),
-      backgroundColor: PALETTE.white,
-      strokeWidth: 1,
-      roundness: { type: 3 },
-    });
-  }
-  builder.text(`${id}-label`, group.label, labelX, labelY, style.fontSize);
-}
-
 // Clean stacks the header and the compartments as filled boxes with sharp
 // corners. Sketch draws one rounded outline and divides it with rules.
 function drawType(builder, type, geometry, layout, prefix) {
@@ -714,23 +659,8 @@ function drawRelation(builder, relation, edge, outers, prefix) {
   }, { labelled: relation.label !== "" });
   bindArrow(arrow, "start", from);
   bindArrow(arrow, "end", to);
-  if (relation.label !== "") {
-    // Excalidraw centers an arrow label on the middle point, or on the middle
-    // of the middle segment when the point count is even.
-    const final = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
-    const middle = Math.floor(final.length / 2);
-    const [centerX, centerY] = final.length % 2 === 1
-      ? final[middle]
-      : [(final[middle - 1][0] + final[middle][0]) / 2, (final[middle - 1][1] + final[middle][1]) / 2];
-    const fontSize = builder.style.fontSize - 2;
-    const size = measure(relation.label, fontSize, builder.style);
-    arrow.boundElements = [...(arrow.boundElements ?? []), { id: `${id}-label`, type: "text" }];
-    builder.text(`${id}-label`, relation.label, centerX - size.width / 2, centerY - size.height / 2, fontSize, {
-      textAlign: "center",
-      verticalAlign: "middle",
-      containerId: arrow.id,
-    });
-  }
+  if (relation.label !== "") labelArrow(builder, arrow, `${id}-label`, relation.label, builder.style.fontSize - 2);
+
 }
 
 async function layoutGraph(elk, graph, style, prefix) {
@@ -743,7 +673,9 @@ async function layoutGraph(elk, graph, style, prefix) {
 
   const depth = (group) => (group.parent === null ? 0 : 1 + depth(graph.groups.get(group.parent)));
   const groups = [...graph.groups.values()].sort((a, b) => depth(a) - depth(b));
-  for (const group of groups) drawGroup(builder, group, layoutNodes.get(group.id), prefix, depth(group));
+  for (const group of groups) {
+    drawZone(builder, `${prefix}group-${group.id}`, layoutNodes.get(group.id), { ...group, depth: depth(group) });
+  }
 
   const outers = new Map();
   for (const type of graph.types.values()) {

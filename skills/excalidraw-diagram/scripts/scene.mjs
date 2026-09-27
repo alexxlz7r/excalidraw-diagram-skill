@@ -165,8 +165,18 @@ function evenEnds(points, startHead, endHead) {
 }
 
 // Excalidraw puts an arrow label on the middle point of an odd point list.
-// Insert the midpoint of the path length as that middle point, and balance
-// both halves with collinear points.
+// Insert `middle`, a point on segment `segment`, as that middle point, and
+// balance both halves with collinear points.
+function balanceAround(points, segment, middle) {
+  const before = [...points.slice(0, segment + 1), middle];
+  const after = [middle, ...points.slice(segment + 1)];
+  const midpoint = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  while (before.length < after.length) before.splice(-1, 0, midpoint(before.at(-2), before.at(-1)));
+  while (after.length < before.length) after.splice(1, 0, midpoint(after[0], after[1]));
+  return [...before, ...after.slice(1)];
+}
+
+// Make the midpoint of the path length the middle point.
 function centerMiddle(points) {
   const lengths = points.slice(1).map((point, index) =>
     Math.hypot(point[0] - points[index][0], point[1] - points[index][1]));
@@ -179,13 +189,22 @@ function centerMiddle(points) {
   const ratio = lengths[segment] === 0 ? 0 : remaining / lengths[segment];
   const [ax, ay] = points[segment];
   const [bx, by] = points[segment + 1];
-  const middle = [ax + (bx - ax) * ratio, ay + (by - ay) * ratio];
-  const before = [...points.slice(0, segment + 1), middle];
-  const after = [middle, ...points.slice(segment + 1)];
-  const midpoint = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  while (before.length < after.length) before.splice(-1, 0, midpoint(before.at(-2), before.at(-1)));
-  while (after.length < before.length) after.splice(1, 0, midpoint(after[0], after[1]));
-  return [...before, ...after.slice(1)];
+  return balanceAround(points, segment, [ax + (bx - ax) * ratio, ay + (by - ay) * ratio]);
+}
+
+// Make the point of the path nearest to `target` the middle point.
+function centerAt(points, target) {
+  let best = null;
+  for (let segment = 0; segment < points.length - 1; segment += 1) {
+    const [a, b] = [points[segment], points[segment + 1]];
+    const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+    const squared = dx * dx + dy * dy;
+    const t = squared === 0 ? 0 : Math.min(1, Math.max(0, ((target[0] - a[0]) * dx + (target[1] - a[1]) * dy) / squared));
+    const point = [a[0] + dx * t, a[1] + dy * t];
+    const gap = Math.hypot(point[0] - target[0], point[1] - target[1]);
+    if (best === null || gap < best.gap) best = { segment, point, gap };
+  }
+  return balanceAround(points, best.segment, best.point);
 }
 
 const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
@@ -247,6 +266,27 @@ export function bindArrow(arrow, end, target) {
   }
 }
 
+// Where Excalidraw centers a label bound to an arrow: on the middle point, or
+// on the middle of the middle segment when the point count is even.
+export function arrowLabelCenter(arrow) {
+  const points = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
+  const middle = Math.floor(points.length / 2);
+  if (points.length % 2 === 1) return points[middle];
+  return [(points[middle - 1][0] + points[middle][0]) / 2, (points[middle - 1][1] + points[middle][1]) / 2];
+}
+
+// Bind a centered label to an arrow, at the point where Excalidraw draws it.
+export function labelArrow(builder, arrow, id, text, fontSize) {
+  const [centerX, centerY] = arrowLabelCenter(arrow);
+  const size = measure(text, fontSize, builder.style);
+  arrow.boundElements = [...(arrow.boundElements ?? []), { id, type: "text" }];
+  return builder.text(id, text, centerX - size.width / 2, centerY - size.height / 2, fontSize, {
+    textAlign: "center",
+    verticalAlign: "middle",
+    containerId: arrow.id,
+  });
+}
+
 function placeArrow(arrow, points) {
   const [startX, startY] = points[0];
   arrow.x = startX;
@@ -262,7 +302,8 @@ function placeArrow(arrow, points) {
 // bound in the "inside" mode back on their fixed points, as Excalidraw does
 // when a user drags a shape. A loop bound at both ends to one shape moves as a
 // whole. The label and plate of an arrow (`<id>-label`, `<id>-plate`) follow:
-// centered over a two-point arrow, or moved with a loop. Changes the scene in
+// centered over a two-point arrow, or moved with a loop. A label bound to the
+// arrow goes to the point where Excalidraw draws it. Changes the scene in
 // place and returns it.
 export function rebindScene(scene) {
   const elements = new Map(scene.elements.map((element) => [element.id, element]));
@@ -282,8 +323,16 @@ export function rebindScene(scene) {
     placeArrow(arrow, after);
     for (const end of ["start", "end"]) bindArrow(arrow, end, elements.get(arrow[`${end}Binding`].elementId));
 
+    const boundLabel = arrow.boundElements?.find((bound) => bound.type === "text");
+    if (boundLabel) {
+      const text = elements.get(boundLabel.id);
+      const [centerX, centerY] = arrowLabelCenter(arrow);
+      text.x = centerX - text.width / 2;
+      text.y = centerY - text.height / 2;
+      continue;
+    }
     const label = elements.get(`${arrow.id}-label`);
-    if (!label || label.containerId) continue;
+    if (!label) continue;
     const [dx, dy] = loop || after.length !== 2
       ? shift
       : [(after[0][0] + after[1][0]) / 2 - (label.x + label.width / 2), after[0][1] - before[0][1]];
@@ -353,7 +402,7 @@ export class SceneBuilder {
     });
   }
 
-  boundText(container, id, text, fontSize, groupIds) {
+  boundText(container, id, text, fontSize, groupIds = []) {
     const size = measure(text, fontSize, this.style);
     container.boundElements = [...(container.boundElements ?? []), { id, type: "text" }];
     return this.text(
@@ -381,9 +430,12 @@ export class SceneBuilder {
   // `fullHeads` inserts points that give each arrowhead a full end segment. An
   // arrow bound at both ends must keep two points: Excalidraw moves only the
   // ends of a longer arrow, and a fixed inner point can fold it back.
-  arrow(id, points, semantics, extra = {}, { labelled = false, fullHeads = true } = {}) {
+  // `labelled` makes the middle of the path the label point; `labelAt` makes
+  // the point of the path nearest to it the label point.
+  arrow(id, points, semantics, extra = {}, { labelled = false, labelAt = null, fullHeads = true } = {}) {
     if (fullHeads) points = evenEnds(points, semantics.start, semantics.end);
-    if (labelled) points = centerMiddle(points);
+    if (labelAt !== null) points = centerAt(points, labelAt);
+    else if (labelled) points = centerMiddle(points);
     const [startX, startY] = points[0];
     const relative = points.map(([px, py]) => [px - startX, py - startY]);
     const xs = relative.map(([px]) => px);
@@ -400,6 +452,68 @@ export class SceneBuilder {
       ...extra,
     });
   }
+}
+
+// ELK (the Eclipse Layout Kernel) lays out graphs. The setup script installs it.
+export async function loadElk() {
+  try {
+    const { default: ELK } = await import("elkjs/lib/elk.bundled.js");
+    return new ELK();
+  } catch (error) {
+    if (error?.code === "ERR_MODULE_NOT_FOUND") {
+      throw new SpecError(`elkjs is not installed.\nRun: ${path.join(path.dirname(fileURLToPath(import.meta.url)), "setup_renderer.sh")}`);
+    }
+    throw error;
+  }
+}
+
+// The sides where the flow leaves and enters a node, per ELK direction.
+export const FLOW_SIDES = {
+  DOWN: ["SOUTH", "NORTH"],
+  UP: ["NORTH", "SOUTH"],
+  RIGHT: ["EAST", "WEST"],
+  LEFT: ["WEST", "EAST"],
+};
+
+// ELK 0.12 transposes a compound node's minimum size for vertical layered layouts.
+export function elkMinimumSize(direction, width) {
+  return direction === "DOWN" || direction === "UP" ? `(0,${width})` : `(${width},0)`;
+}
+
+const ZONE_FILLS = ["hachure", "cross-hatch"];
+
+// A zone groups other elements. Draw it before its content. In clean, an
+// outer zone is hatched, a nested zone cross-hatched, and a deeper zone pale;
+// the label of a hatched zone sits on a plate. In sketch, a zone is a dashed
+// ink outline. `depth` is the nesting level, from 0. `plate` puts the label on
+// a plate in every zone, so the label can cover lines drawn after the zone.
+export function drawZone(builder, id, box, { label, tone, depth = 0, plate = false }) {
+  const style = builder.style;
+  const sketch = style.preset === "sketch";
+  const fillStyle = sketch ? "solid" : ZONE_FILLS[depth] ?? "solid";
+  const hatched = fillStyle !== "solid";
+  const zone = builder.base(id, "rectangle", box.x, box.y, box.width, box.height, {
+    strokeColor: strokeOf(style, tone, 4),
+    backgroundColor: sketch ? "transparent" : shade(tone, hatched ? 2 : 1),
+    fillStyle,
+    strokeWidth: 1,
+    strokeStyle: sketch ? "dashed" : "solid",
+    roundness: { type: 3 },
+  });
+  if (label === "") return zone;
+  const labelX = box.x + 20;
+  const labelY = box.y + 14;
+  if (hatched || plate) {
+    const size = measure(label, style.fontSize, style);
+    builder.base(`${id}-plate`, "rectangle", labelX - 10, labelY - 4, size.width + 20, size.height + 8, {
+      strokeColor: sketch ? "transparent" : shade(tone, 4),
+      backgroundColor: hatched ? PALETTE.white : style.background,
+      strokeWidth: 1,
+      roundness: { type: 3 },
+    });
+  }
+  builder.text(`${id}-label`, label, labelX, labelY, style.fontSize);
+  return zone;
 }
 
 export function bounds(elements) {
@@ -445,7 +559,7 @@ export function drawHeading(style, title, subtitle) {
 
 // Legend items are markers with a label, in rows that wrap at `maxWidth`:
 // - { marker: "badge", text, backgroundColor }: a letter in a circle.
-// - { marker: "arrow", semantics, strokeColor }: a short connector.
+// - { marker: "arrow", semantics, strokeColor, strokeWidth }: a short connector.
 // - { marker: "swatch", fill }: a filled square; `fill` holds its element fields.
 function drawLegend(builder, items, left, top, maxWidth) {
   const style = builder.style;
@@ -474,6 +588,7 @@ function drawLegend(builder, items, left, top, maxWidth) {
     } else if (item.marker === "arrow") {
       builder.arrow(`${id}-line`, [[x, y + markerSize / 2], [x + markerWidth, y + markerSize / 2]], item.semantics, {
         strokeColor: item.strokeColor,
+        strokeWidth: item.strokeWidth ?? 2,
         groupIds,
       });
     } else {
