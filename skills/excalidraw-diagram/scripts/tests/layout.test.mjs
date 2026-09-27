@@ -3,24 +3,38 @@ import test from "node:test";
 
 import { boxFor, textHeight, textWidth } from "../layout.mjs";
 
-test("monospace text helpers size wrapped text and its container", () => {
-  const text = "молчит\n1234567890";
-
-  assert.equal(textWidth(text, 20), 120);
-  assert.equal(textHeight(text, 20), 50);
-  assert.deepEqual(boxFor(text, { fontSize: 20 }), {
-    width: 164,
-    height: 80,
+test("text width sums the measured advance of each character", () => {
+  const digit = textWidth("1", 100);
+  assert.ok(digit > 55 && digit < 62, "Cascadia is about 0.6 em wide");
+  assert.equal(textWidth("молчит\n1234567890", 20), textWidth("1234567890", 20));
+  assert.ok(Math.abs(textWidth("1234567890", 20) - 10 * textWidth("1", 20)) < 1e-9);
+  assert.equal(textHeight("молчит\n1234567890", 20), 50);
+  assert.deepEqual(boxFor("1234567890", { fontSize: 20 }), {
+    width: Math.ceil(textWidth("1234567890", 20) + 44),
+    height: 55,
   });
 });
 
-test("non-default fonts require an explicit measured width factor", () => {
+test("proportional fonts measure narrow and wide letters differently", () => {
+  for (const fontFamily of [3, 8]) {
+    assert.equal(textWidth("iiii", 20, { fontFamily }), textWidth("MMMM", 20, { fontFamily }), `font ${fontFamily} is monospace`);
+  }
+  for (const fontFamily of [1, 5, 6, 7, 9]) {
+    assert.ok(
+      textWidth("iiii", 20, { fontFamily }) < textWidth("MMMM", 20, { fontFamily }) / 2,
+      `font ${fontFamily}`,
+    );
+  }
+  assert.equal(textWidth("漢字", 20, { fontFamily: 6 }), 40, "an unknown character is 1 em");
+});
+
+test("fonts without measured widths require a width factor", () => {
   assert.throws(
-    () => textWidth("Label", 20, { fontFamily: 1 }),
+    () => textWidth("Label", 20, { fontFamily: 2 }),
     /charWidthFactor is required/,
   );
   assert.equal(
-    textWidth("Label", 20, { fontFamily: 1, charWidthFactor: 0.52 }),
+    textWidth("Label", 20, { fontFamily: 2, charWidthFactor: 0.52 }),
     52,
   );
 });

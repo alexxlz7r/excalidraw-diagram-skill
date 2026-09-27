@@ -1,5 +1,18 @@
 /** Deterministic text and container estimates for generated Excalidraw scenes. */
 
+import { readFileSync } from "node:fs";
+
+// Advance widths in em, measured in the renderer by measure_fonts.mjs.
+const METRICS = JSON.parse(readFileSync(new URL("./font-metrics.json", import.meta.url), "utf8"));
+const ADVANCES = new Map(Object.entries(METRICS.families).map(([family, { widths }]) => [
+  Number(family),
+  new Map([...METRICS.characters].map((character, index) => [character, widths[index]])),
+]));
+// A character outside the measured ranges, such as CJK, counts as 1 em.
+const UNKNOWN_ADVANCE = 1;
+
+export const MEASURED_FONT_FAMILIES = [...ADVANCES.keys()];
+
 function positiveNumber(value, label) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     throw new TypeError(`${label} must be a positive number`);
@@ -18,13 +31,19 @@ export function textWidth(
   { fontFamily = 3, charWidthFactor = null } = {},
 ) {
   positiveNumber(fontSize, "fontSize");
-  const factor = charWidthFactor ?? (fontFamily === 3 ? 0.6 : null);
-  if (factor === null) {
-    throw new TypeError("charWidthFactor is required for font families other than 3");
+  const lines = textLines(text);
+  if (charWidthFactor === null) {
+    const advances = ADVANCES.get(fontFamily);
+    if (!advances) {
+      throw new TypeError(
+        `charWidthFactor is required for font family ${fontFamily}; measured families: ${MEASURED_FONT_FAMILIES.join(", ")}`,
+      );
+    }
+    const lineWidth = (line) => [...line].reduce((sum, character) => sum + (advances.get(character) ?? UNKNOWN_ADVANCE), 0);
+    return Math.max(...lines.map(lineWidth)) * fontSize;
   }
-  positiveNumber(factor, "charWidthFactor");
-  const longestLine = Math.max(...textLines(text).map((line) => [...line].length));
-  return longestLine * fontSize * factor;
+  positiveNumber(charWidthFactor, "charWidthFactor");
+  return Math.max(...lines.map((line) => [...line].length)) * fontSize * charWidthFactor;
 }
 
 export function textHeight(text, fontSize, { lineHeight = 1.25 } = {}) {
