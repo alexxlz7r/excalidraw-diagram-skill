@@ -11,11 +11,16 @@ const BESIDE_GAP = 8;
 const LABEL_MARGIN = 16;
 
 // ELK reads spacing from the parent of each node, so the root and every zone
-// repeat it. An edge keeps a full arrowhead segment clear of the nodes.
+// repeat it. An edge keeps a full arrowhead segment clear of the nodes. Edges
+// cross a zone border at ports of the zone; the port spacing keeps them apart.
+// Between two layers, parallel runs of edges keep a wider gap, so a solid and
+// a dashed line do not read as one.
 const CONTAINER_OPTIONS = {
   "elk.spacing.edgeNode": String(END_SEGMENT),
   "elk.layered.spacing.edgeNodeBetweenLayers": String(END_SEGMENT),
   "elk.spacing.edgeEdge": "16",
+  "elk.layered.spacing.edgeEdgeBetweenLayers": "20",
+  "elk.spacing.portPort": "24",
 };
 
 // The two sides across the flow: the low side (above or left) and the high

@@ -234,6 +234,71 @@ test("zones nest, hold their components, and take links on their outline", async
   }
 });
 
+test("links that cross one side of a zone stay 24 px apart", async () => {
+  const scene = await buildArchitecture({
+    zones: [{ id: "client" }, { id: "lab", parent: "client" }, { id: "shared", parent: "client" }],
+    components: [
+      { id: "app", zone: "client" },
+      { id: "shell", zone: "lab" },
+      { id: "feature", zone: "lab" },
+      { id: "chrome", zone: "shared" },
+      { id: "api", zone: "shared" },
+    ],
+    links: [
+      { from: "app", to: "shell" },
+      { from: "shell", to: "feature", kind: "async" },
+      { from: "app", to: "chrome" },
+      { from: "lab", to: "shared" },
+      { from: "shell", to: "chrome", kind: "async" },
+    ],
+  });
+  const shared = byId(scene).get("zone-shared");
+  const crossings = [];
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+    const points = globalPoints(arrow);
+    for (const [index, point] of points.slice(1).entries()) {
+      const before = points[index];
+      if (Math.abs(before[0] - point[0]) < 0.5
+        && Math.min(before[1], point[1]) <= shared.y && Math.max(before[1], point[1]) >= shared.y) crossings.push(point[0]);
+    }
+  }
+  crossings.sort((a, b) => a - b);
+  assert.ok(crossings.length >= 3);
+  for (const [index, x] of crossings.slice(1).entries()) {
+    assert.ok(x - crossings[index] >= 24 - 0.5, `links cross the zone top ${(x - crossings[index]).toFixed(1)} px apart`);
+  }
+});
+
+test("parallel runs of links between two layers stay 20 px apart", async () => {
+  const scene = await buildArchitecture({
+    components: ["a", "b", "c", "x", "y", "z"].map((id) => ({ id })),
+    links: [
+      { from: "c", to: "y" },
+      { from: "c", to: "x" },
+      { from: "b", to: "x" },
+      { from: "a", to: "z" },
+      { from: "a", to: "x" },
+    ],
+  });
+  const runs = [];
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+    const points = globalPoints(arrow);
+    for (const [index, point] of points.slice(1).entries()) {
+      const before = points[index];
+      if (Math.abs(before[1] - point[1]) < 0.5 && Math.abs(before[0] - point[0]) > 20) {
+        runs.push({ id: arrow.id, y: point[1], from: Math.min(before[0], point[0]), to: Math.max(before[0], point[0]) });
+      }
+    }
+  }
+  assert.ok(runs.length >= 2);
+  for (const [index, run] of runs.entries()) {
+    for (const other of runs.slice(index + 1)) {
+      if (other.id === run.id || Math.min(run.to, other.to) - Math.max(run.from, other.from) <= 0) continue;
+      assert.ok(Math.abs(run.y - other.y) >= 20 - 0.5, `${run.id} and ${other.id} run ${Math.abs(run.y - other.y).toFixed(1)} px apart`);
+    }
+  }
+});
+
 test("zone references are checked", async () => {
   const cases = [
     [{ ...workspace, components: [{ id: "x", zone: "nowhere" }] }, /components\[0\]: unknown zone "nowhere"/],
