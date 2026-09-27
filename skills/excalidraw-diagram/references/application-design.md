@@ -178,6 +178,9 @@ Use a single left-to-right or top-to-bottom direction. A path passes review when
 every decision has labeled outcomes and every reachable branch has a visible
 continuation or terminal state.
 
+Generate flow and state diagrams with `scripts/flow.mjs`. See
+[flow-spec.md](flow-spec.md).
+
 ## Shared visual language
 
 - Treat UML symbols as a compact vocabulary, not a compliance target. Prefer a

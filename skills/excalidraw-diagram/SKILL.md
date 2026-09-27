@@ -82,13 +82,16 @@ most capable model with a brief instead of a fork.
    classes (C/I/A badges), actors and use cases, interaction sequences, or
    control and state flows, read
    [references/application-design.md](references/application-design.md).
-   For a type map, generate the scene from a spec with `scripts/type_map.mjs`,
-   as described in [references/type-map-spec.md](references/type-map-spec.md),
-   instead of authoring coordinates by hand. For a sequence diagram, generate
-   the scene with `scripts/sequence.mjs`, as described in
-   [references/sequence-spec.md](references/sequence-spec.md). Author the
-   scene by hand only when the argument depends on a composition that the
-   generators cannot express, such as two mirrored structures.
+   Generate the scene from a spec instead of authoring coordinates by hand:
+
+   | Diagram | Generator | Spec |
+   | --- | --- | --- |
+   | Type map | `scripts/type_map.mjs` | [references/type-map-spec.md](references/type-map-spec.md) |
+   | Sequence | `scripts/sequence.mjs` | [references/sequence-spec.md](references/sequence-spec.md) |
+   | Flow or state | `scripts/flow.mjs` | [references/flow-spec.md](references/flow-spec.md) |
+
+   Author the scene by hand only when the argument depends on a composition
+   that the generators cannot express, such as two mirrored structures.
 5. Before authoring or repairing scene JSON, read
    [references/json-schema.md](references/json-schema.md). Use
    [references/element-templates.md](references/element-templates.md) when
