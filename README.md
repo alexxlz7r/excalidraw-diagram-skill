@@ -208,6 +208,7 @@ skills/excalidraw-diagram/
     type_map.mjs                Type map generator with ELK layout
     sequence.mjs                Sequence diagram generator
     rebind_scene.mjs            Puts bound arrows back after a scene edit
+    extract_scene.mjs           Reads the scene embedded in an SVG or PNG export
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint
 ```

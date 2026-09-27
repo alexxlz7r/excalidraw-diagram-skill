@@ -57,6 +57,8 @@ most capable model with a brief instead of a fork.
 
 1. Determine whether the task creates a new diagram or edits an existing one.
    For edits, preserve content and style that the user did not ask to change.
+   To edit a delivered `.excalidraw.svg` or `.excalidraw.png`, first get its
+   scene as "Edit a delivered image" in step 3 of the design workflow tells.
 2. Resolve the diagram's style and theme before layout. The user's style
    instructions take precedence over an existing scene, host theme, or built-in
    defaults. Apply the chosen style to the whole diagram: typography, shapes,
@@ -148,6 +150,30 @@ Text elements contain only the visible text in `text` and `originalText`.
 Relationships must be shown with arrows or structural lines, not proximity
 alone. Use stroke widths `1`, `2`, or `3`, and keep opacity at `100`; use theme
 colors and stroke styles for hierarchy.
+
+#### Edit a delivered image
+
+A delivered image holds its scene. Edit that scene and export it again:
+
+1. If a generator made the diagram and its spec is available, edit the spec
+   and generate the scene again. A regeneration from the spec replaces all
+   edits made in the scene JSON.
+2. Otherwise, extract the scene to a working file outside the destination.
+   From the directory containing this `SKILL.md`, run:
+
+   ```bash
+   node scripts/extract_scene.mjs <name>.excalidraw.svg -o /tmp/<name>.excalidraw
+   ```
+
+   The script also reads `.excalidraw.png`. If it reports that the file does
+   not embed a scene, build a new scene.
+3. Edit the working scene.
+4. If shapes moved, run `node scripts/rebind_scene.mjs /tmp/<name>.excalidraw`.
+   It moves the arrows that are bound in the `"inside"` mode at both ends.
+   Move the ends of other bound arrows by hand, for example arrows with the
+   `"orbit"` mode from excalidraw.com or with `focus` and `gap` only.
+5. Export with `--output <name>.excalidraw.svg` to replace the delivered image,
+   then inspect the preview as step 4 tells.
 
 ### 4. Export and inspect
 

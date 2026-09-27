@@ -13,6 +13,7 @@ import {
   parseArguments,
   validateExcalidraw,
 } from "../export_excalidraw.mjs";
+import { extractScene } from "../extract_scene.mjs";
 
 function common(id, type, x, y, width, height, seed) {
   return {
@@ -172,6 +173,38 @@ test("SVG and PNG preserve text, bindings, files, and non-ASCII content", async 
   assert.deepEqual((await readFile(preview)).subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
   assert.equal(path.basename(pngPath), "diagram.excalidraw.png");
   assert.deepEqual((await readFile(pngPath)).subarray(0, 8), Buffer.from("89504e470d0a1a0a", "hex"));
+});
+
+// The fields that the exporter checks after each export.
+function keyFields(scene) {
+  return {
+    elements: scene.elements.map((element) => ({
+      id: element.id,
+      text: element.text ?? null,
+      startBinding: element.startBinding?.elementId ?? null,
+      endBinding: element.endBinding?.elementId ?? null,
+      containerId: element.containerId ?? null,
+      fileId: element.fileId ?? null,
+    })),
+    files: Object.keys(scene.files ?? {}),
+  };
+}
+
+test("an extracted scene exports again without change", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "excalidraw-extract-"));
+  const source = path.join(directory, "diagram.excalidraw");
+  await writeFile(source, JSON.stringify(richScene()), "utf8");
+
+  const svgScene = extractScene(await readFile(await exportDiagram(source)));
+  const pngScene = extractScene(await readFile(await exportDiagram(source, { outputFormat: "png" })));
+  assert.deepEqual(keyFields(svgScene), keyFields(richScene()));
+  assert.deepEqual(keyFields(pngScene), keyFields(richScene()));
+
+  const edited = path.join(directory, "edited.excalidraw");
+  await writeFile(edited, JSON.stringify(svgScene), "utf8");
+  const again = extractScene(await readFile(await exportDiagram(edited)));
+  assert.deepEqual(again.elements, svgScene.elements);
+  assert.deepEqual(again.files, svgScene.files);
 });
 
 test("export fails instead of linking fonts that it cannot embed", async () => {
