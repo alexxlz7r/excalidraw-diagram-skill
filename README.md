@@ -200,6 +200,7 @@ skills/excalidraw-diagram/
     layout.mjs                 Shared text and container sizing helpers
     font-metrics.json           Measured character widths per font family
     measure_fonts.mjs           Measures font-metrics.json in the renderer
+    scene.mjs                   Shared styles, element builder, and CLI for generators
     type_map.mjs                Type map generator with ELK layout
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint
