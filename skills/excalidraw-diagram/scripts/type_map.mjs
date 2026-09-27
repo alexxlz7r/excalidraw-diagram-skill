@@ -69,10 +69,16 @@ const DEFAULT_STYLE = {
 
 const LINE_HEIGHT = 1.25;
 // Excalidraw sizes an arrowhead from the length of the end segment: half the
-// segment, up to a fixed maximum. Every end segment gets this length, so all
-// arrowheads and pointer dots have one size.
+// segment (a quarter for a diamond), up to a fixed maximum per kind. Every end
+// segment gets the length for its arrowhead, so arrowheads of one kind have one
+// size, and every kind reaches its maximum or 16 px.
 const END_SEGMENT = 32;
+const DIAMOND_SEGMENT = 48;
 const CELL_PADDING = 6;
+
+function endSegment(arrowhead) {
+  return arrowhead?.startsWith("diamond") ? DIAMOND_SEGMENT : END_SEGMENT;
+}
 
 function shade(tone, level) {
   const shades = PALETTE.shades[tone];
@@ -357,7 +363,17 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
   const nodes = new Map();
   const usesPartitions = [...graph.types.values()].some((type) => type.layer !== null);
 
-  const containerOptions = usesPartitions ? { "elk.partitioning.activate": "true" } : {};
+  // ELK reads spacing from the parent of each node, so every group repeats it.
+  // Without it, the ELK defaults inside a group shorten the end segments.
+  const stub = Math.max(END_SEGMENT, ...graph.relations.map((relation) => endSegment(RELATIONS[relation.type].start)));
+  const containerOptions = {
+    ...(usesPartitions ? { "elk.partitioning.activate": "true" } : {}),
+    "elk.spacing.nodeNode": String(graph.spacing.nodes),
+    "elk.layered.spacing.nodeNodeBetweenLayers": String(graph.spacing.layers),
+    "elk.spacing.edgeNode": String(END_SEGMENT),
+    "elk.spacing.edgeEdge": "16",
+    "elk.layered.spacing.edgeNodeBetweenLayers": String(stub),
+  };
   for (const group of graph.groups.values()) {
     const label = group.label === "" ? { width: 0, height: 0 } : measure(group.label, style.fontSize, style);
     const labelHeight = group.label === "" ? 0 : label.height + 8;
@@ -521,11 +537,6 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.json.edgeCoords": "ROOT",
       "elk.json.shapeCoords": "ROOT",
-      "elk.spacing.nodeNode": String(graph.spacing.nodes),
-      "elk.layered.spacing.nodeNodeBetweenLayers": String(graph.spacing.layers),
-      "elk.spacing.edgeNode": String(END_SEGMENT),
-      "elk.spacing.edgeEdge": "16",
-      "elk.layered.spacing.edgeNodeBetweenLayers": String(END_SEGMENT),
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
       "elk.edgeLabels.placement": "CENTER",
@@ -610,20 +621,21 @@ function resolveSides(graph, draft) {
   return sides;
 }
 
-function evenEnds(points, atStart, atEnd) {
-  const split = (from, to) => {
+function evenEnds(points, startHead, endHead) {
+  const split = (from, to, head) => {
     const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
-    if (length <= END_SEGMENT + 1) return null;
-    const ratio = END_SEGMENT / length;
+    const target = endSegment(head);
+    if (length <= target + 1) return null;
+    const ratio = target / length;
     return [to[0] + (from[0] - to[0]) * ratio, to[1] + (from[1] - to[1]) * ratio];
   };
   let result = points;
-  if (atEnd) {
-    const point = split(result.at(-2), result.at(-1));
+  if (endHead !== null) {
+    const point = split(result.at(-2), result.at(-1), endHead);
     if (point) result = [...result.slice(0, -1), point, result.at(-1)];
   }
-  if (atStart) {
-    const point = split(result[1], result[0]);
+  if (startHead !== null) {
+    const point = split(result[1], result[0], startHead);
     if (point) result = [result[0], point, ...result.slice(1)];
   }
   return result;
@@ -723,7 +735,7 @@ class SceneBuilder {
   }
 
   arrow(id, points, semantics, extra = {}, { labelled = false } = {}) {
-    points = evenEnds(points, semantics.start !== null, semantics.end !== null);
+    points = evenEnds(points, semantics.start, semantics.end);
     if (labelled) points = centerMiddle(points);
     const [startX, startY] = points[0];
     const relative = points.map(([px, py]) => [px - startX, py - startY]);

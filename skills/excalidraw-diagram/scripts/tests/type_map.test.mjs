@@ -265,6 +265,54 @@ test("arrowheads and pointer dots share one size", async () => {
   for (const length of lengths) assert.ok(Math.abs(length - 32) < 1.5, `end segment ${length.toFixed(1)} px`);
 });
 
+function endSegments(scene) {
+  const lengths = [];
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+    const points = arrow.points;
+    const length = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (arrow.endArrowhead) lengths.push([`${arrow.id} end`, length(points.at(-2), points.at(-1)), arrow.endArrowhead]);
+    if (arrow.startArrowhead) lengths.push([`${arrow.id} start`, length(points[0], points[1]), arrow.startArrowhead]);
+  }
+  return lengths;
+}
+
+test("connectors inside a group keep full end segments", async () => {
+  const scene = await buildTypeMap({
+    direction: "DOWN",
+    groups: [{ id: "g", label: "group" }],
+    types: [
+      { id: "Page", group: "g", kind: "struct", members: ["summary", "items"] },
+      { id: "Summary", group: "g" },
+      { id: "Store", group: "g" },
+      { id: "Api", group: "g" },
+    ],
+    relations: [
+      { from: "Page", fromMember: "items", to: "Store", type: "navigates" },
+      { from: "Page", to: "Summary", type: "composition", label: "items" },
+      { from: "Store", to: "Api", type: "depends" },
+    ],
+  });
+  for (const [where, length, head] of endSegments(scene)) {
+    const expected = head.startsWith("diamond") ? 48 : 32;
+    assert.ok(Math.abs(length - expected) < 1.5, `${where}: end segment ${length.toFixed(1)} px`);
+  }
+});
+
+test("diamonds get their full size on bent connectors", async () => {
+  const scene = await buildTypeMap({
+    direction: "DOWN",
+    types: [{ id: "Whole" }, { id: "Left" }, { id: "Right" }, { id: "Other" }],
+    relations: [
+      { from: "Whole", to: "Left", type: "composition" },
+      { from: "Whole", to: "Right", type: "aggregation" },
+      { from: "Whole", to: "Other", type: "composition" },
+    ],
+  });
+  for (const [where, length] of endSegments(scene)) {
+    assert.ok(Math.abs(length - 48) < 1.5, `${where}: end segment ${length.toFixed(1)} px`);
+  }
+});
+
 test("labels sit on the middle of the connector path", async () => {
   const scene = await buildTypeMap({
     types: [{ id: "A" }, { id: "B" }],
