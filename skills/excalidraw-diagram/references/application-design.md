@@ -153,6 +153,9 @@ Use a sequence diagram for a real request, command, event, or background job.
 Verify that chronological order remains obvious even when message labels are
 hidden and that crossing arrows are unnecessary.
 
+Generate sequence diagrams with `scripts/sequence.mjs`. See
+[sequence-spec.md](sequence-spec.md).
+
 ## Flow/state
 
 Use flow/state for decisions, lifecycle changes, validation, orchestration, and

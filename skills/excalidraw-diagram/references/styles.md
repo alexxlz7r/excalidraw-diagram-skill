@@ -8,8 +8,10 @@ theme ([default-theme.md](default-theme.md) or a resolved theme) sets the
 colors. The style overrides `style.roughness` and `style.fontFamily` of the
 theme. Apply one style to the whole diagram, in every diagram mode.
 
-For a type map, pass the style name in the spec: `"style": "clean"` or
-`"style": "sketch"`. See [type-map-spec.md](type-map-spec.md#top-level).
+For a type map or a sequence diagram, pass the style name in the spec:
+`"style": "clean"` or `"style": "sketch"`. See
+[type-map-spec.md](type-map-spec.md#top-level) and
+[sequence-spec.md](sequence-spec.md#top-level).
 
 ## clean
 

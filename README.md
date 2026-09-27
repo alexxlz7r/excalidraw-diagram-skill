@@ -152,7 +152,10 @@ stays quiet and the active theme controls the visual language.
 
 The agent writes a type map as a compact JSON spec. `scripts/type_map.mjs`
 lays the spec out with ELK and draws the notation, so the agent does not
-calculate coordinates by hand.
+calculate coordinates by hand. A sequence diagram works the same way through
+`scripts/sequence.mjs`: participants, messages, self-calls, fragments, notes,
+and activation bars. Its arrows stay bound to the lifelines when a user moves
+a participant in Excalidraw.
 
 ## Usage
 
@@ -187,6 +190,7 @@ skills/excalidraw-diagram/
     theme-adaptation.md         Host-artifact theme derivation
     application-design.md       Lightweight UML-like application diagrams
     type-map-spec.md            Spec format for the type map generator
+    sequence-spec.md            Spec format for the sequence generator
     styles.md                   The clean and sketch styles
     design-guidance.md          Visual patterns and quality criteria
     element-templates.md        Excalidraw element examples
@@ -202,6 +206,8 @@ skills/excalidraw-diagram/
     measure_fonts.mjs           Measures font-metrics.json in the renderer
     scene.mjs                   Shared styles, element builder, and CLI for generators
     type_map.mjs                Type map generator with ELK layout
+    sequence.mjs                Sequence diagram generator
+    rebind_scene.mjs            Puts bound arrows back after a scene edit
     tests/                       Export and cold-setup coverage
     vendor/entry.js             Generated-bundle entrypoint
 ```

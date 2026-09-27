@@ -84,9 +84,11 @@ most capable model with a brief instead of a fork.
    [references/application-design.md](references/application-design.md).
    For a type map, generate the scene from a spec with `scripts/type_map.mjs`,
    as described in [references/type-map-spec.md](references/type-map-spec.md),
-   instead of authoring coordinates by hand. Author the scene by hand only
-   when the argument depends on a composition that the generator cannot
-   express, such as two mirrored structures.
+   instead of authoring coordinates by hand. For a sequence diagram, generate
+   the scene with `scripts/sequence.mjs`, as described in
+   [references/sequence-spec.md](references/sequence-spec.md). Author the
+   scene by hand only when the argument depends on a composition that the
+   generators cannot express, such as two mirrored structures.
 5. Before authoring or repairing scene JSON, read
    [references/json-schema.md](references/json-schema.md). Use
    [references/element-templates.md](references/element-templates.md) when

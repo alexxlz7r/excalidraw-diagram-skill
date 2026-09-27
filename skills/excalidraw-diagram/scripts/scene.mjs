@@ -188,6 +188,114 @@ function centerMiddle(points) {
   return [...before, ...after.slice(1)];
 }
 
+const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+const minus = (a, b) => [a[0] - b[0], a[1] - b[1]];
+const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+function segmentIntersection([p, p2], [q, q2]) {
+  const r = minus(p2, p);
+  const s = minus(q2, q);
+  const denominator = cross(r, s);
+  if (denominator === 0) return null;
+  const t = cross(minus(q, p), s) / denominator;
+  const u = cross(minus(q, p), r) / denominator;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [p[0] + t * r[0], p[1] + t * r[1]];
+}
+
+// Port of determineFocusDistance from Excalidraw 0.18.1 for an unrotated
+// rectangle: `edge` is the arrow end, `adjacent` the point next to it.
+function focusDistance(element, adjacent, edge) {
+  const { x, y, width, height } = element;
+  const center = [x + width / 2, y + height / 2];
+  if (adjacent[0] === edge[0] && adjacent[1] === edge[1]) return 0;
+  const sign = -Math.sign(cross(minus(edge, adjacent), minus(edge, center)));
+  const direction = minus(edge, adjacent);
+  const length = Math.hypot(...direction);
+  const reach = Math.max(2 * width, 2 * height);
+  const interceptor = [edge, [edge[0] + direction[0] / length * reach, edge[1] + direction[1] / length * reach]];
+  const diagonals = [
+    [[x - width, y - height], [x + 2 * width, y + 2 * height]],
+    [[x + 2 * width, y - height], [x - width, y + 2 * height]],
+  ];
+  const halfDiagonal = Math.hypot(width, height) / 2;
+  const ordered = diagonals
+    .map((line) => segmentIntersection(interceptor, line))
+    .filter((point) => point !== null)
+    .sort((a, b) => distance(a, edge) - distance(b, edge))
+    .map((point) => sign * distance(center, point) / halfDiagonal)
+    .sort((a, b) => Math.abs(a) - Math.abs(b));
+  return ordered[0] ?? 0;
+}
+
+// Bind one end of an arrow to a rectangle at the current end point, in two
+// formats. Excalidraw 0.18 reads `focus` and `gap`. Later releases, such as
+// excalidraw.com, read `fixedPoint` and `mode`: "inside" keeps the end at that
+// fraction of the rectangle when the rectangle moves.
+export function bindArrow(arrow, end, target) {
+  const points = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
+  const [edge, adjacent] = end === "start" ? [points[0], points[1]] : [points.at(-1), points.at(-2)];
+  arrow[`${end}Binding`] = {
+    elementId: target.id,
+    focus: focusDistance(target, adjacent, edge),
+    gap: 1,
+    fixedPoint: [(edge[0] - target.x) / target.width, (edge[1] - target.y) / target.height],
+    mode: "inside",
+  };
+  if (!target.boundElements?.some((bound) => bound.id === arrow.id)) {
+    target.boundElements = [...(target.boundElements ?? []), { id: arrow.id, type: "arrow" }];
+  }
+}
+
+function placeArrow(arrow, points) {
+  const [startX, startY] = points[0];
+  arrow.x = startX;
+  arrow.y = startY;
+  arrow.points = points.map(([px, py]) => [px - startX, py - startY]);
+  const xs = arrow.points.map(([px]) => px);
+  const ys = arrow.points.map(([, py]) => py);
+  arrow.width = Math.max(...xs) - Math.min(...xs);
+  arrow.height = Math.max(...ys) - Math.min(...ys);
+}
+
+// After an edit of the scene JSON moves shapes, put the ends of every arrow
+// bound in the "inside" mode back on their fixed points, as Excalidraw does
+// when a user drags a shape. A loop bound at both ends to one shape moves as a
+// whole. The label and plate of an arrow (`<id>-label`, `<id>-plate`) follow:
+// centered over a two-point arrow, or moved with a loop. Changes the scene in
+// place and returns it.
+export function rebindScene(scene) {
+  const elements = new Map(scene.elements.map((element) => [element.id, element]));
+  const fixed = (binding) => {
+    const target = elements.get(binding.elementId);
+    return [target.x + binding.fixedPoint[0] * target.width, target.y + binding.fixedPoint[1] * target.height];
+  };
+  for (const arrow of scene.elements) {
+    if (arrow.type !== "arrow" || arrow.startBinding?.mode !== "inside" || arrow.endBinding?.mode !== "inside") continue;
+    const before = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
+    const start = fixed(arrow.startBinding);
+    const loop = arrow.startBinding.elementId === arrow.endBinding.elementId;
+    const shift = minus(start, before[0]);
+    const after = loop
+      ? before.map(([px, py]) => [px + shift[0], py + shift[1]])
+      : [start, ...before.slice(1, -1), fixed(arrow.endBinding)];
+    placeArrow(arrow, after);
+    for (const end of ["start", "end"]) bindArrow(arrow, end, elements.get(arrow[`${end}Binding`].elementId));
+
+    const label = elements.get(`${arrow.id}-label`);
+    if (!label || label.containerId) continue;
+    const [dx, dy] = loop || after.length !== 2
+      ? shift
+      : [(after[0][0] + after[1][0]) / 2 - (label.x + label.width / 2), after[0][1] - before[0][1]];
+    for (const element of [label, elements.get(`${arrow.id}-plate`)]) {
+      if (!element) continue;
+      element.x += dx;
+      element.y += dy;
+    }
+  }
+  return scene;
+}
+
 export class SceneBuilder {
   constructor(style) {
     this.style = style;
@@ -270,8 +378,11 @@ export class SceneBuilder {
     });
   }
 
-  arrow(id, points, semantics, extra = {}, { labelled = false } = {}) {
-    points = evenEnds(points, semantics.start, semantics.end);
+  // `fullHeads` inserts points that give each arrowhead a full end segment. An
+  // arrow bound at both ends must keep two points: Excalidraw moves only the
+  // ends of a longer arrow, and a fixed inner point can fold it back.
+  arrow(id, points, semantics, extra = {}, { labelled = false, fullHeads = true } = {}) {
+    if (fullHeads) points = evenEnds(points, semantics.start, semantics.end);
     if (labelled) points = centerMiddle(points);
     const [startX, startY] = points[0];
     const relative = points.map(([px, py]) => [px - startX, py - startY]);
@@ -388,6 +499,15 @@ export function appendLegend(elements, style, items) {
   elements.push(...legend.elements);
 }
 
+// Append a footnote below the elements, left-aligned with them.
+export function appendFootnote(elements, style, text) {
+  if (text === "") return;
+  const box = bounds(elements);
+  const footnote = new SceneBuilder(style);
+  footnote.text("footnote", text, box.minX, box.maxY + 24, style.fontSize - 2, { strokeColor: strokeOf(style, "gray", 5) });
+  elements.push(...footnote.elements);
+}
+
 export function sceneDocument(elements, style) {
   return {
     type: "excalidraw",
@@ -430,7 +550,8 @@ function parseArguments(argv) {
 
 // Run a generator from the command line when `moduleUrl` is the entry point:
 // read the JSON spec, build the scene, write it, and print its path and size.
-export async function runGenerator(moduleUrl, { usage, build }) {
+// A scene wider than `widthLimit` gets a warning.
+export async function runGenerator(moduleUrl, { usage, build, widthLimit = Infinity }) {
   if (path.resolve(process.argv[1] ?? "") !== path.resolve(fileURLToPath(moduleUrl))) return;
   try {
     const parsed = parseArguments(process.argv.slice(2));
@@ -449,6 +570,9 @@ export async function runGenerator(moduleUrl, { usage, build }) {
     await writeFile(parsed.output, `${JSON.stringify(scene, null, 2)}\n`);
     const box = bounds(scene.elements);
     console.log(`${path.resolve(parsed.output)} (${Math.ceil(box.width)} × ${Math.ceil(box.height)} px)`);
+    if (box.width > widthLimit) {
+      console.error(`WARNING: the scene is wider than ${widthLimit} px; break long labels and names into lines`);
+    }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exitCode = 1;
