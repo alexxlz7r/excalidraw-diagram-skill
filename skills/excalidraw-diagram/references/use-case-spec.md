@@ -69,7 +69,7 @@ not wrap text: break long names into lines in the spec.
 | `style` | `clean` | Named style: `"clean"` or `"sketch"`, or an object with `preset` and overrides. See [styles.md](styles.md). |
 | `system` | none | Label of the product or subsystem boundary. |
 | `actors` | `[]` | People and systems outside the boundary. |
-| `journeys` | `[]` | `{ id, label, tone }`. A journey is a zone that groups use cases inside the boundary. |
+| `journeys` | `[]` | `{ id, label, tone, parent }`. A journey is a zone that groups use cases inside the boundary. `parent` nests it in another journey. |
 | `cases` | required | Use cases, named as verb phrases: `Approve refund`. |
 | `links` | `[]` | Lines between actors and use cases, and arrows between use cases. |
 | `footnote` | none | Text below the diagram. |
@@ -135,6 +135,5 @@ for the oval with `<case>-text`; `l<n>` for links in spec order with
 
 - The generator does not wrap text. It prints a warning when the scene is
   wider than 1200 px.
-- Journeys do not nest.
 - The lines of an actor share their first segment and split toward their
   use cases.

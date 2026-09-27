@@ -156,9 +156,37 @@ test("journeys group use cases inside the system and give them a hue; primary it
   assert.equal(sketch.get("checkout").strokeWidth, 3, "sketch keeps the primary outline");
 });
 
+test("journeys nest: an inner journey sits inside its parent, one fill level deeper", async () => {
+  const nested = {
+    ...shop,
+    journeys: [...shop.journeys, { id: "pay", label: "Payment", parent: "buy", tone: "violet" }],
+    cases: shop.cases.map((useCase) => (useCase.id === "pay" ? { ...useCase, id: "card", journey: "pay" } : useCase)),
+    links: shop.links.map((link) => (link.to === "pay" ? { ...link, to: "card" } : link)),
+  };
+  for (const style of ["clean", "sketch"]) {
+    const scene = await buildUseCases({ ...nested, style });
+    assert.deepEqual(validateExcalidraw(scene), []);
+    const elements = byId(scene);
+    const order = new Map(scene.elements.map((element, index) => [element.id, index]));
+    const [system, buy, pay] = ["system", "journey-buy", "journey-pay"].map((id) => elements.get(id));
+    assert.ok(inside(pay, buy), `${style}: the inner journey is inside its parent`);
+    assert.ok(inside(buy, system), `${style}: the parent stays inside the system`);
+    assert.ok(order.get(buy.id) < order.get(pay.id), `${style}: the inner journey is drawn over its parent`);
+    assert.ok(inside(elements.get("card"), pay), `${style}: the inner journey holds its use case`);
+    for (const id of ["browse", "checkout"]) {
+      assert.ok(!overlaps(elements.get(id), pay), `${style}: ${id} of the parent stays outside the inner journey`);
+    }
+  }
+  const clean = byId(await buildUseCases(nested));
+  assert.equal(clean.get("journey-buy").fillStyle, "cross-hatch");
+  assert.equal(clean.get("journey-pay").fillStyle, "solid");
+});
+
 test("invalid use-case specs report where the problem is", async () => {
   const cases = [
     [{ ...shop, cases: [{ id: "x", journey: "lost" }] }, /cases\[0\]: unknown journey "lost"/],
+    [{ ...shop, journeys: [{ id: "a", parent: "b" }, { id: "b", parent: "a" }] }, /journey "a" is inside itself/],
+    [{ ...shop, journeys: [{ id: "a", parent: "system" }] }, /journeys\[0\]: unknown parent "system"/],
     [{ ...shop, actors: [{ id: "a", side: "top" }] }, /actors\[0\]\.side/],
     [{ ...shop, cases: [{ id: "customer" }] }, /duplicate use case "customer"/],
     [{ ...shop, cases: [] }, /at least one use case/],

@@ -10,12 +10,12 @@ import {
   drawZone,
   fillOf,
   measure,
+  normalizeZones,
   requireId,
   resolveStyle,
   runGenerator,
   SceneBuilder,
   sceneDocument,
-  shade,
   SpecError,
   strokeOf,
   textOf,
@@ -40,19 +40,6 @@ function normalizeActors(items) {
     actors.set(id, { id, side, name: textOf(item.name ?? id, `${where}.name`), primary: item.primary === true });
   }
   return actors;
-}
-
-function normalizeJourneys(items, style) {
-  const journeys = new Map();
-  for (const [index, item] of asArray(items, "journeys").entries()) {
-    const where = `journeys[${index}]`;
-    const id = requireId(item?.id, `${where}.id`);
-    if (journeys.has(id)) throw new SpecError(`duplicate journey "${id}"`);
-    const tone = item.tone ?? style.tone;
-    shade(tone, 1);
-    journeys.set(id, { id, label: textOf(item.label ?? id, `${where}.label`), tone });
-  }
-  return journeys;
 }
 
 function normalizeCases(items, journeys, actors, style) {
@@ -95,7 +82,7 @@ export function normalizeSpec(spec) {
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) throw new SpecError("spec must be an object");
   const style = resolveStyle(spec.style);
   const actors = normalizeActors(spec.actors);
-  const journeys = normalizeJourneys(spec.journeys, style);
+  const journeys = normalizeZones(spec.journeys, style, { field: "journeys", noun: "journey", labelFromId: true });
   const cases = normalizeCases(spec.cases, journeys, actors, style);
   return {
     style,
@@ -204,7 +191,7 @@ function layoutInput(graph) {
       { id: "system", parent: null, label: graph.system === "" ? null : measure(graph.system, style.fontSize, style) },
       ...[...graph.journeys.values()].map((journey) => ({
         id: `journey-${journey.id}`,
-        parent: "system",
+        parent: journey.parent === null ? "system" : `journey-${journey.parent}`,
         label: measure(journey.label, style.fontSize, style),
       })),
     ],
@@ -248,7 +235,7 @@ export async function buildUseCases(spec) {
   const targets = new Map();
   drawZone(body, "system", layout.groups.get("system"), { label: graph.system, tone: style.tone, plate: true });
   for (const journey of graph.journeys.values()) {
-    drawZone(body, `journey-${journey.id}`, layout.groups.get(`journey-${journey.id}`), { ...journey, depth: 1, plate: true });
+    drawZone(body, `journey-${journey.id}`, layout.groups.get(`journey-${journey.id}`), { ...journey, depth: 1 + journey.depth, plate: true });
   }
   for (const useCase of graph.cases.values()) targets.set(useCase.id, drawCase(body, useCase, layout.nodes.get(useCase.id)));
   for (const actor of graph.actors.values()) {
