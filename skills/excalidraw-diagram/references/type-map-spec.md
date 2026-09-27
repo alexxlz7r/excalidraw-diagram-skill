@@ -135,7 +135,7 @@ highlighted row, or `{ relation, tone }` for a connector sample.
 | `fromMember`, `toMember` | none | Member ID, full text, or identifier in the text, such as `fd[3]`. The connector then starts or ends at that member row. |
 | `fromSide`, `toSide` | automatic | `left` or `right`: the side of a member row where the connector attaches. By default the connector uses the side that faces the other type. |
 | `dot` | see meaning | Dot at the start of the connector. The default is on for `navigates` from a member row, which draws a pointer field. |
-| `label` | none | Short connector label, centered on the connector. A labelled connector spans one extra layer. |
+| `label` | none | Short connector label on the connector. The layout keeps space for it on the path. A labelled connector spans one extra layer. |
 | `tone` | ink | Palette hue for the connector. The label stays in ink for contrast. |
 
 The layout places parents before children: `extends` and `implements` run

@@ -345,21 +345,68 @@ test("diamonds get their full size on bent connectors", async () => {
   }
 });
 
-test("labels sit on the middle of the connector path", async () => {
-  const scene = await buildTypeMap({
-    types: [{ id: "A" }, { id: "B" }],
-    relations: [{ from: "A", to: "B", type: "depends", label: "uses" }],
-    spacing: { layers: 160 },
+function globalPoints(arrow) {
+  return arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
+}
+
+// Where Excalidraw draws an arrow label: on the middle point, or on the middle
+// of the middle segment when the point count is even.
+function labelCenter(arrow) {
+  const points = globalPoints(arrow);
+  const middle = Math.floor(points.length / 2);
+  if (points.length % 2 === 1) return points[middle];
+  return [(points[middle - 1][0] + points[middle][0]) / 2, (points[middle - 1][1] + points[middle][1]) / 2];
+}
+
+// Whether a point lies on a polyline.
+function onPath(points, [px, py]) {
+  return points.slice(1).some((b, index) => {
+    const a = points[index];
+    const cross = (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]);
+    const within = Math.min(a[0], b[0]) - 0.5 <= px && px <= Math.max(a[0], b[0]) + 0.5
+      && Math.min(a[1], b[1]) - 0.5 <= py && py <= Math.max(a[1], b[1]) + 0.5;
+    return within && Math.abs(cross) / (Math.hypot(b[0] - a[0], b[1] - a[1]) || 1) < 0.5;
   });
-  const arrow = scene.elements.find((element) => element.type === "arrow");
-  const label = scene.elements.find((element) => element.containerId === arrow.id);
-  assert.equal(arrow.points.length % 2, 1, "odd point count puts a point in the middle");
-  const [mx, my] = arrow.points[(arrow.points.length - 1) / 2];
-  const [startX, startY] = arrow.points[0];
-  const [endX, endY] = arrow.points.at(-1);
-  assert.ok(Math.abs(my - (startY + endY) / 2) < 1 && Math.abs(mx - (startX + endX) / 2) < 1, "middle point is the path center");
-  assert.ok(Math.abs(label.x + label.width / 2 - (arrow.x + mx)) < 1);
-  assert.ok(Math.abs(label.y + label.height / 2 - (arrow.y + my)) < 1);
+}
+
+const overlaps = (a, b) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+test("labels sit on their connector, where Excalidraw draws them, and clear of the types", async () => {
+  const specs = [
+    {
+      types: [{ id: "A" }, { id: "B" }],
+      relations: [{ from: "A", to: "B", type: "depends", label: "uses" }],
+    },
+    {
+      direction: "DOWN",
+      types: [
+        { id: "task", kind: "struct", members: ["pid", "files"] },
+        { id: "files", kind: "struct", members: ["fdt"] },
+        { id: "far", kind: "struct", members: ["x"] },
+      ],
+      relations: [
+        { from: "task", fromMember: "files", to: "files", type: "navigates" },
+        { from: "task", to: "far", type: "depends", label: "a long dependency" },
+      ],
+    },
+  ];
+  for (const spec of specs) {
+    const elements = byId(await buildTypeMap(spec));
+    const types = spec.types.map((type) => elements.get(type.id));
+    for (const relation of spec.relations.filter((item) => item.label)) {
+      const arrow = [...elements.values()].find((element) => element.type === "arrow"
+        && element.startBinding?.elementId === relation.from && element.endBinding?.elementId === relation.to);
+      const label = elements.get(`${arrow.id}-label`);
+      assert.equal(label.containerId, arrow.id);
+      assert.ok(arrow.boundElements.some((bound) => bound.id === label.id));
+      const [cx, cy] = labelCenter(arrow);
+      assert.ok(Math.abs(label.x + label.width / 2 - cx) < 1 && Math.abs(label.y + label.height / 2 - cy) < 1,
+        `${arrow.id} label sits where Excalidraw draws it`);
+      assert.ok(onPath(globalPoints(arrow), [cx, cy]), `${arrow.id} label sits on its path`);
+      for (const type of types) assert.ok(!overlaps(label, type), `${arrow.id} label is clear of ${type.id}`);
+    }
+  }
 });
 
 const zoneSpec = (style) => ({

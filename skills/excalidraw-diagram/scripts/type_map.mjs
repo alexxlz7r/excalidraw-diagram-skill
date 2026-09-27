@@ -442,7 +442,15 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
     const edge = { id: relation.id, sources: [source], targets: [target] };
     if (relation.label !== "") {
       const size = measure(relation.label, style.fontSize - 2, style);
-      edge.labels = [{ id: `${relation.id}-label`, text: relation.label, width: size.width + 8, height: size.height + 4 }];
+      edge.labels = [{
+        id: `${relation.id}-label`,
+        text: relation.label,
+        width: size.width + 8,
+        height: size.height + 4,
+        // ELK reads this option only from the label: the label then sits on
+        // the edge, where Excalidraw draws it.
+        layoutOptions: { "elk.edgeLabels.inline": "true" },
+      }];
     }
     return edge;
   });
@@ -487,7 +495,6 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
       "elk.edgeLabels.placement": "CENTER",
-      "elk.edgeLabels.inline": "true",
       "elk.padding": "[top=0,left=0,bottom=0,right=0]",
     },
     children: rootChildren,
@@ -648,6 +655,9 @@ function drawRelation(builder, relation, edge, outers, prefix) {
   const semantics = RELATIONS[relation.type];
   let points = sectionPoints(edge);
   if (semantics.reverse) points = points.reverse();
+  // A bent connector puts its label where ELK kept space for it.
+  const label = edge.labels?.[0];
+  const labelAt = label && points.length > 2 ? [label.x + label.width / 2, label.y + label.height / 2] : null;
   const id = `${prefix}${relation.id}`;
   const from = outers.get(relation.from);
   const to = outers.get(relation.to);
@@ -656,7 +666,7 @@ function drawRelation(builder, relation, edge, outers, prefix) {
     start: relation.dot && semantics.start === null ? "dot" : semantics.start,
   }, {
     strokeColor: relation.tone === null ? builder.style.ink : strokeOf(builder.style, relation.tone, 5),
-  }, { labelled: relation.label !== "" });
+  }, { labelled: relation.label !== "", labelAt });
   bindArrow(arrow, "start", from);
   bindArrow(arrow, "end", to);
   if (relation.label !== "") labelArrow(builder, arrow, `${id}-label`, relation.label, builder.style.fontSize - 2);
