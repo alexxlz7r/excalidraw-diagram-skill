@@ -10,7 +10,8 @@ const USAGE = `Usage: node scripts/rebind_scene.mjs <scene.excalidraw>
 
 Moves the ends of every arrow bound in the "inside" mode to its fixed points,
 as Excalidraw does when a user drags a shape, and recenters the arrow labels.
-The sequence generator writes such bindings. Changes the file in place.`;
+The type map and sequence generators write such bindings. Changes the file in
+place.`;
 
 const [input, ...rest] = process.argv.slice(2);
 if (input === undefined || ["-h", "--help"].includes(input) || rest.length > 0) {

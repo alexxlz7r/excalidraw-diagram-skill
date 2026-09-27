@@ -8,6 +8,7 @@ import { textHeight } from "./layout.mjs";
 import {
   appendLegend,
   asArray,
+  bindArrow,
   bounds,
   drawHeading,
   END_SEGMENT,
@@ -710,12 +711,9 @@ function drawRelation(builder, relation, edge, outers, prefix) {
     start: relation.dot && semantics.start === null ? "dot" : semantics.start,
   }, {
     strokeColor: relation.tone === null ? builder.style.ink : strokeOf(builder.style, relation.tone, 5),
-    startBinding: { elementId: from.id, focus: 0, gap: 1 },
-    endBinding: { elementId: to.id, focus: 0, gap: 1 },
   }, { labelled: relation.label !== "" });
-  for (const outer of [from, to]) {
-    outer.boundElements = [...(outer.boundElements ?? []), { id: arrow.id, type: "arrow" }];
-  }
+  bindArrow(arrow, "start", from);
+  bindArrow(arrow, "end", to);
   if (relation.label !== "") {
     // Excalidraw centers an arrow label on the middle point, or on the middle
     // of the middle segment when the point count is even.

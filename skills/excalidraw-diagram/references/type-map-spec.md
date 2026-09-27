@@ -193,6 +193,10 @@ deeper group has a solid pale fill. The group title sits on a solid plate.
   layer. If this makes the scene too wide, omit the link and name the target
   in the note text.
 - Connectors are polylines. When a user moves a type in Excalidraw, the bound
-  connectors keep their bend points and move only their ends.
+  connectors keep their bend points and move only their ends. Each end stays
+  at its point on the border of the type: the bindings hold `focus` and `gap`
+  for Excalidraw 0.18, and `fixedPoint` with `mode: "inside"` for later
+  releases, such as excalidraw.com. After an edit of the scene JSON,
+  `scripts/rebind_scene.mjs` moves the connector ends in the same way.
 - Text sizes use the measured character widths of `scripts/layout.mjs`. The
   sum ignores kerning, so a box can be a little wider than its text.

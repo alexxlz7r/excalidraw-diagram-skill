@@ -57,6 +57,37 @@ test("type map builds a valid scene with UML connectors", async () => {
   assert.equal(elements.get("OrderRepository-badge-text").text, "I");
 });
 
+test("connectors keep their ends on the box border when a type moves", async () => {
+  const scene = await buildTypeMap({
+    direction: "DOWN",
+    types: [
+      { id: "task", kind: "struct", members: ["pid", "files"] },
+      { id: "files", kind: "struct", members: ["count"] },
+      { id: "Base" },
+    ],
+    relations: [
+      { from: "task", fromMember: "files", to: "files", type: "navigates" },
+      { from: "task", to: "Base", type: "extends" },
+    ],
+  });
+  const elements = byId(scene);
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow" && !element.id.startsWith("legend-"))) {
+    const ends = [[arrow.startBinding, [arrow.x + arrow.points[0][0], arrow.y + arrow.points[0][1]]],
+      [arrow.endBinding, arrowEnd(arrow)]];
+    for (const [binding, point] of ends) {
+      const target = elements.get(binding.elementId);
+      assert.equal(binding.mode, "inside", `${arrow.id}: later releases keep the end at its fixed point`);
+      const fixed = [target.x + binding.fixedPoint[0] * target.width, target.y + binding.fixedPoint[1] * target.height];
+      assert.ok(Math.hypot(fixed[0] - point[0], fixed[1] - point[1]) < 1e-6, `${arrow.id}: the fixed point is the end`);
+      const onBorder = binding.fixedPoint.some((ratio) => Math.abs(ratio) < 1e-6 || Math.abs(ratio - 1) < 1e-6);
+      assert.ok(onBorder, `${arrow.id}: the end is on the border of ${target.id}`);
+      assert.equal(typeof binding.focus, "number");
+    }
+  }
+  const pointer = scene.elements.find((element) => element.id.includes("-navigates-"));
+  assert.notEqual(pointer.startBinding.focus, 0, "Excalidraw 0.18 aims at the member row, not at the center");
+});
+
 test("member references start arrows at the member row", async () => {
   const scene = await buildTypeMap({
     direction: "RIGHT",
