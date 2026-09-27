@@ -14,17 +14,21 @@ boundaries, such as a system, a workspace, a scope, or a deployment unit.
    such as app, domain, and storage. Use the categories of the real design.
 2. List the components in the order of the main direction of the calls: the
    callers first, the stores and the external systems last.
-3. Write the spec to a temporary JSON file.
-4. Generate the scene. The script prints the scene path and its size:
+3. Keep the links few. If several components of one zone use components of
+   another zone, draw one link between the two zones. Do not draw a link to a
+   component that almost every component uses, such as a util or types
+   library; say it in the footnote.
+4. Write the spec to a temporary JSON file.
+5. Generate the scene. The script prints the scene path and its size:
 
    ```bash
    node scripts/architecture.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
-5. If the script prints a width warning, break long names and sub lines into
+6. If the script prints a width warning, break long names and sub lines into
    lines, or split the diagram.
-6. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
-7. If the preview fails a check, change the spec and generate again. The next
+7. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
+8. If the preview fails a check, change the spec and generate again. The next
    generation overwrites manual changes to the scene.
 
 ## Spec
@@ -159,6 +163,7 @@ with `zone-<zone>-plate` and `zone-<zone>-label`.
 - The generator does not wrap text. It prints a warning when the scene is
   wider than 1200 px.
 - A dense graph, such as a full import graph, gives long parallel links.
-  Show only the links that carry the argument of the diagram.
+  Show only the links that carry the argument of the diagram, and link zones
+  instead of their components (step 3 of the workflow).
 - The layout cannot mirror two similar structures. Author such a scene by
   hand.
