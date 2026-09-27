@@ -488,6 +488,33 @@ export function elkMinimumSize(direction, width) {
   return direction === "DOWN" || direction === "UP" ? `(0,${width})` : `(${width},0)`;
 }
 
+// A zone is a boundary, such as a system, a scope, a group of states, or a
+// journey. `parent` nests it in another zone. `field` names the spec field
+// and `noun` one item in errors. Without a label, a zone takes its id as the
+// label if `labelFromId` is set. The result lists parents before children,
+// with the nesting depth of each zone.
+export function normalizeZones(items, style, { field, noun, labelFromId = false }) {
+  const zones = new Map();
+  for (const [index, item] of asArray(items, field).entries()) {
+    const where = `${field}[${index}]`;
+    const id = requireId(item?.id, `${where}.id`);
+    if (zones.has(id)) throw new SpecError(`duplicate ${noun} "${id}"`);
+    const tone = item.tone ?? style.tone;
+    shade(tone, 1);
+    const label = textOf(item.label ?? (labelFromId ? id : undefined), `${where}.label`);
+    zones.set(id, { id, where, label, tone, parent: item.parent ?? null });
+  }
+  const depthOf = (zone, seen = new Set()) => {
+    if (zone.parent === null) return 0;
+    if (seen.has(zone.id)) throw new SpecError(`${noun} "${zone.id}" is inside itself`);
+    const parent = zones.get(zone.parent);
+    if (!parent) throw new SpecError(`${zone.where}: unknown parent "${zone.parent}"`);
+    return 1 + depthOf(parent, new Set([...seen, zone.id]));
+  };
+  for (const zone of zones.values()) zone.depth = depthOf(zone);
+  return new Map([...zones.values()].sort((a, b) => a.depth - b.depth).map((zone) => [zone.id, zone]));
+}
+
 const ZONE_FILLS = ["hachure", "cross-hatch"];
 
 // A zone groups other elements. Draw it before its content. In clean, an

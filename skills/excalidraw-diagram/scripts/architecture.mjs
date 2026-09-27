@@ -11,6 +11,7 @@ import {
   drawZone,
   fillOf,
   measure,
+  normalizeZones,
   requireId,
   resolveStyle,
   runGenerator,
@@ -50,30 +51,6 @@ function normalizeRoles(items) {
     roles.set(id, { id, label: textOf(item.label ?? id, `${where}.label`), tone: item.tone });
   }
   return roles;
-}
-
-// A zone is a boundary, such as a system, a workspace, a scope, or a
-// deployment unit. `parent` nests it in another zone. The result lists
-// parents before children, with the nesting depth of each zone.
-function normalizeZones(items, style) {
-  const zones = new Map();
-  for (const [index, item] of asArray(items, "zones").entries()) {
-    const where = `zones[${index}]`;
-    const id = requireId(item?.id, `${where}.id`);
-    if (zones.has(id)) throw new SpecError(`duplicate zone "${id}"`);
-    const tone = item.tone ?? style.tone;
-    shade(tone, 1);
-    zones.set(id, { id, where, label: textOf(item.label, `${where}.label`), tone, parent: item.parent ?? null });
-  }
-  const depthOf = (zone, seen = new Set()) => {
-    if (zone.parent === null) return 0;
-    if (seen.has(zone.id)) throw new SpecError(`zone "${zone.id}" is inside itself`);
-    const parent = zones.get(zone.parent);
-    if (!parent) throw new SpecError(`${zone.where}: unknown parent "${zone.parent}"`);
-    return 1 + depthOf(parent, new Set([...seen, zone.id]));
-  };
-  for (const zone of zones.values()) zone.depth = depthOf(zone);
-  return new Map([...zones.values()].sort((a, b) => a.depth - b.depth).map((zone) => [zone.id, zone]));
 }
 
 function normalizeComponents(items, roles, zones, style) {
@@ -171,7 +148,7 @@ export function normalizeSpec(spec) {
   const direction = spec.direction ?? "DOWN";
   if (!DIRECTIONS.has(direction)) throw new SpecError(`direction must be one of ${[...DIRECTIONS].join(", ")}`);
   const roles = normalizeRoles(spec.roles);
-  const zones = normalizeZones(spec.zones, style);
+  const zones = normalizeZones(spec.zones, style, { field: "zones", noun: "zone" });
   const components = normalizeComponents(spec.components, roles, zones, style);
   const graph = {
     style,
