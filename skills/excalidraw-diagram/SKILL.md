@@ -89,6 +89,7 @@ most capable model with a brief instead of a fork.
    | Type map | `scripts/type_map.mjs` | [references/type-map-spec.md](references/type-map-spec.md) |
    | Sequence | `scripts/sequence.mjs` | [references/sequence-spec.md](references/sequence-spec.md) |
    | Flow or state | `scripts/flow.mjs` | [references/flow-spec.md](references/flow-spec.md) |
+   | Use-case map | `scripts/use_cases.mjs` | [references/use-case-spec.md](references/use-case-spec.md) |
    | System or service architecture | `scripts/architecture.mjs` | [references/architecture-spec.md](references/architecture-spec.md) |
 
    Author the scene by hand only when the argument depends on a composition

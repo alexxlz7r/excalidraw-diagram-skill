@@ -132,6 +132,9 @@ details.
 Make the principal actor and primary journey visually dominant. Supporting
 roles and administrative cases should read as secondary.
 
+Generate use-case maps with `scripts/use_cases.mjs`. See
+[use-case-spec.md](use-case-spec.md).
+
 ## Sequence
 
 Use a sequence diagram for a real request, command, event, or background job.
