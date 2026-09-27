@@ -200,5 +200,6 @@ deeper group has a solid pale fill. The group title sits on a solid plate.
   for Excalidraw 0.18, and `fixedPoint` with `mode: "inside"` for later
   releases, such as excalidraw.com. After an edit of the scene JSON,
   `scripts/rebind_scene.mjs` moves the connector ends in the same way.
-- Text sizes use the measured character widths of `scripts/layout.mjs`. The
-  sum ignores kerning, so a box can be a little wider than its text.
+- Text sizes use the measured character widths of `scripts/layout.mjs`, with
+  a margin for kerning and pixel hinting, so a box can be a little wider than
+  its text. See [styles.md](styles.md#text-measurement).
