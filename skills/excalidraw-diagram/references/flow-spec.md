@@ -72,7 +72,7 @@ not wrap text: break long labels and notes into lines in the spec.
 | `subtitle` | none | One sentence with the conclusion of the diagram. |
 | `style` | `clean` | Named style: `"clean"` or `"sketch"`, or an object with `preset` and overrides. See [styles.md](styles.md). |
 | `direction` | `DOWN` | Flow direction: `DOWN`, `UP`, `RIGHT`, or `LEFT`. `DOWN` fits long flows into 1200 px. Use `RIGHT` for a flow of five layers or fewer. |
-| `groups` | `[]` | `{ id, label, tone }`. A group is a zone around its nodes, such as a composite state or a stage. |
+| `groups` | `[]` | `{ id, label, tone, parent }`. A group is a zone around its nodes, such as a composite state or a stage. `parent` nests it in another group. |
 | `nodes` | required | Nodes in the order of the flow. |
 | `edges` | `[]` | Edges between nodes and groups. |
 | `legend` | none | Path samples below the diagram: `{ path, label }`. |
@@ -156,6 +156,5 @@ in spec order with `e<n>-label`, and `group-<group>` for zones with
 - The generator does not wrap text. It prints a warning when the scene is
   wider than 1200 px.
 - Swimlanes are not supported. Use groups for stages or owners.
-- Groups do not nest.
 - A straight labelled edge keeps two points, so its label sits at its middle.
 - An edge that spans several layers can cross the main path.

@@ -359,11 +359,35 @@ test("nothing enters an entry, and nothing leaves a terminal outcome", async () 
     error instanceof SpecError && /edges\[4\]/.test(error.message) && /end "done"/.test(error.message));
 });
 
+test("groups nest: an inner group sits inside its parent, one fill level deeper", async () => {
+  const nested = {
+    ...lifecycle,
+    groups: [...lifecycle.groups, { id: "hot", label: "HOT", parent: "liquid", tone: "red" }],
+    nodes: lifecycle.nodes.map((node) => (node.id === "active" ? { ...node, group: "hot" } : node)),
+  };
+  for (const style of ["clean", "sketch"]) {
+    const scene = await buildFlow({ ...nested, style });
+    assert.deepEqual(validateExcalidraw(scene), []);
+    const elements = byId(scene);
+    const order = new Map(scene.elements.map((element, index) => [element.id, index]));
+    const [outer, inner] = [elements.get("group-liquid"), elements.get("group-hot")];
+    assert.ok(inside(inner, outer), `${style}: the inner group is inside its parent`);
+    assert.ok(order.get(outer.id) < order.get(inner.id), `${style}: the inner group is drawn over its parent`);
+    assert.ok(inside(elements.get("active"), inner), `${style}: the inner group holds its node`);
+    assert.ok(!overlaps(elements.get("idle"), inner), `${style}: a node of the parent stays outside the inner group`);
+  }
+  const clean = byId(await buildFlow(nested));
+  assert.equal(clean.get("group-liquid").fillStyle, "hachure");
+  assert.equal(clean.get("group-hot").fillStyle, "cross-hatch");
+});
+
 test("invalid specs report where the problem is", async () => {
   const cases = [
     [{ ...review, edges: [...review.edges, { from: "check", to: "nowhere" }] }, /edges\[4\]: unknown node or group "nowhere"/],
     [{ ...lifecycle, nodes: [...lifecycle.nodes, { id: "x", group: "missing" }] }, /nodes\[4\]: unknown group "missing"/],
     [{ ...lifecycle, nodes: [...lifecycle.nodes, { id: "liquid" }] }, /duplicate node "liquid"/],
+    [{ ...lifecycle, groups: [{ id: "a", parent: "b" }, { id: "b", parent: "a" }] }, /group "a" is inside itself/],
+    [{ ...lifecycle, groups: [...lifecycle.groups, { id: "a", parent: "z" }] }, /groups\[1\]: unknown parent "z"/],
     [{ ...review, nodes: [...review.nodes, { id: "x", kind: "state" }] }, /nodes\[4\]\.kind/],
     [{ ...review, edges: [...review.edges, { from: "check", to: "valid", path: "happy" }] }, /edges\[4\]\.path/],
     [{ ...review, direction: "SIDEWAYS" }, /direction/],

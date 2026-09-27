@@ -11,6 +11,7 @@ import {
   drawZone,
   fillOf,
   measure,
+  normalizeZones,
   requireId,
   resolveStyle,
   runGenerator,
@@ -48,19 +49,6 @@ const PATH_LOOKS = {
   failure: { strokeWidth: 2, strokeStyle: "dashed", sketchStyle: "dashed", tone: "red" },
   recovery: { strokeWidth: 2, strokeStyle: "dashed", sketchStyle: "dotted", tone: "green" },
 };
-
-function normalizeGroups(items, style) {
-  const groups = new Map();
-  for (const [index, item] of asArray(items, "groups").entries()) {
-    const where = `groups[${index}]`;
-    const id = requireId(item?.id, `${where}.id`);
-    if (groups.has(id)) throw new SpecError(`duplicate group "${id}"`);
-    const tone = item.tone ?? style.tone;
-    shade(tone, 1);
-    groups.set(id, { id, label: textOf(item.label, `${where}.label`), tone });
-  }
-  return groups;
-}
 
 function normalizeNodes(items, groups, style) {
   const nodes = new Map();
@@ -133,7 +121,7 @@ export function normalizeSpec(spec) {
   const style = resolveStyle(spec.style, STYLE_EXTENSION);
   const direction = spec.direction ?? "DOWN";
   if (!DIRECTIONS.has(direction)) throw new SpecError(`direction must be one of ${[...DIRECTIONS].join(", ")}`);
-  const groups = normalizeGroups(spec.groups, style);
+  const groups = normalizeZones(spec.groups, style, { field: "groups", noun: "group" });
   const nodes = normalizeNodes(spec.nodes, groups, style);
   const edges = normalizeEdges(spec.edges, nodes, groups);
   checkDecisions(nodes, edges);
@@ -182,7 +170,7 @@ function layoutInput(graph) {
     direction: graph.direction,
     groups: [...graph.groups.values()].map((group) => ({
       id: group.id,
-      parent: null,
+      parent: group.parent,
       label: group.label === "" ? null : measure(group.label, style.fontSize, style),
     })),
     nodes: [...graph.nodes.values()].map((node) => ({
