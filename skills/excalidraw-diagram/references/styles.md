@@ -11,8 +11,9 @@ theme. Apply one style to the whole diagram, in every diagram mode.
 For a diagram from a generator, pass the style name in the spec:
 `"style": "clean"` or `"style": "sketch"`. See the top-level fields in
 [type-map-spec.md](type-map-spec.md#top-level),
-[sequence-spec.md](sequence-spec.md#top-level), and
-[flow-spec.md](flow-spec.md#top-level).
+[sequence-spec.md](sequence-spec.md#top-level),
+[flow-spec.md](flow-spec.md#top-level), and
+[architecture-spec.md](architecture-spec.md#top-level).
 
 ## clean
 
