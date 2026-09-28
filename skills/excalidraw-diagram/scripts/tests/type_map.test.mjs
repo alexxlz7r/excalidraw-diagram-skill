@@ -542,3 +542,36 @@ test("a connector inside a zone keeps clear of the zone border", async () => {
   }
   assert.ok(along > 0, "a connector runs along the zone border");
 });
+
+// The smallest container that Excalidraw lets hold a bound text of `size`
+// along one axis: it adds 5 px padding on each side, and an ellipse holds
+// the text in its inscribed square.
+function containerMinimum(type, size) {
+  const padded = Math.ceil(size) + 10;
+  if (type === "ellipse") return Math.round((padded / Math.sqrt(2)) * 2);
+  if (type === "diamond") return 2 * padded;
+  return padded;
+}
+
+test("kind badges keep their size when an Excalidraw edit refits bound text", async () => {
+  // A letter bound to a small circle breaks the Excalidraw rule, so the first
+  // font change grows the circle and it cannot shrink back.
+  const scene = await buildTypeMap({ ...dipSpec, legend: [{ kind: "class", label: "class" }, { kind: "interface", label: "interface" }] });
+  const elements = byId(scene);
+  for (const text of scene.elements.filter((element) => element.type === "text" && element.containerId)) {
+    const container = elements.get(text.containerId);
+    if (container.type === "arrow") continue;
+    assert.ok(container.width >= containerMinimum(container.type, text.width)
+      && container.height >= containerMinimum(container.type, text.height), `${container.id} holds ${text.id}`);
+  }
+  for (const id of ["OrderService-badge", "OrderRepository-badge", "legend-0-badge", "legend-1-badge"]) {
+    const circle = elements.get(id);
+    const letter = elements.get(`${id}-text`);
+    assert.ok(Math.abs(letter.x + letter.width / 2 - (circle.x + circle.width / 2)) < 0.5
+      && Math.abs(letter.y + letter.height / 2 - (circle.y + circle.height / 2)) < 0.5, `${id} centers its letter`);
+    assert.equal(circle.width, circle.height, `${id} is a circle`);
+    assert.equal(letter.groupIds[0], circle.groupIds[0], `${id} moves with its letter`);
+    assert.ok(!scene.elements.some((element) => element.groupIds[0] === circle.groupIds[0]
+      && element !== circle && element !== letter), `${id} and its letter form their own group`);
+  }
+});

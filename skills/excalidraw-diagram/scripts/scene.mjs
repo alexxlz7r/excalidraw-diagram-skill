@@ -412,6 +412,21 @@ export class SceneBuilder {
     );
   }
 
+  // Text centered on a box but not bound to it. Excalidraw grows a container
+  // until its bound text fits with padding, so a letter in a small circle
+  // stays free.
+  centeredText(box, id, text, fontSize, groupIds = []) {
+    const size = measure(text, fontSize, this.style);
+    return this.text(
+      id,
+      text,
+      box.x + (box.width - size.width) / 2,
+      box.y + (box.height - size.height) / 2,
+      fontSize,
+      { textAlign: "center", groupIds },
+    );
+  }
+
   line(id, x, y, width, extra = {}) {
     return this.base(id, "line", x, y, width, 0, {
       points: [[0, 0], [width, 0]],
@@ -650,12 +665,13 @@ function drawLegend(builder, items, left, top, maxWidth) {
     }
     const groupIds = [id];
     if (item.marker === "badge") {
+      const badgeGroupIds = [`${id}-badge-group`, ...groupIds];
       const badge = builder.base(`${id}-badge`, "ellipse", x, y, markerSize, markerSize, {
         backgroundColor: item.backgroundColor,
         strokeWidth: 1,
-        groupIds,
+        groupIds: badgeGroupIds,
       });
-      builder.boundText(badge, `${id}-badge-text`, item.text, fontSize - 2, groupIds);
+      builder.centeredText(badge, `${id}-badge-text`, item.text, fontSize - 2, badgeGroupIds);
     } else if (item.marker === "arrow") {
       builder.arrow(`${id}-line`, [[x, y + markerSize / 2], [x + markerWidth, y + markerSize / 2]], item.semantics, {
         strokeColor: item.strokeColor,

@@ -210,7 +210,8 @@ For a type at `(x, y)`, assemble:
 | --- | --- | --- |
 | Outer rectangle | `(x, y)`, `width × height` | Relationship arrows bind here |
 | Header (`clean` only) | `(x, y)`, `width × headerHeight`, tone level 2 | none |
-| Badge ellipse | `(x + X, y + (headerHeight - D) / 2)`, `D × D`, theme `white` | Bound letter text |
+| Badge ellipse | `(x + X, y + (headerHeight - D) / 2)`, `D × D`, theme `white` | none |
+| Badge letter | Centered on the badge, `textAlign: "center"` | `containerId: null` |
 | Type name | After the badge, centered on the header line | `containerId: null` |
 | Fields, methods | One rectangle per compartment in `clean`; one rule line above each compartment in `sketch` | none |
 | Member text | `(x + X, compartment top + Y + line offset)`, code font | `containerId: null` |
@@ -219,9 +220,15 @@ In `clean`, use sharp corners (`roundness: null`), level 2 of the tone for the
 header, and level 1 for the outer rectangle and the compartments. In
 `sketch`, use `roundness: { "type": 3 }` on the outer rectangle, white fills,
 and theme `black` strokes. Share one `groupIds: [typeGroupId]` across all parts so
-moving the type carries its badge, name, and members. Give each part its own
-ID and seed. Set reciprocal `boundElements` entries on the badge for its
-letter, and on the outer rectangle for relationship arrows.
+moving the type carries its badge, name, and members. Give the badge and its
+letter `groupIds: [badgeGroupId, typeGroupId]`, so they also move as one. Give
+each part its own ID and seed. Set reciprocal `boundElements` entries on the
+outer rectangle for relationship arrows.
+
+Do not bind the letter to the badge. Excalidraw grows a container until its
+bound text fits with 5 px padding, and an ellipse holds the text in its
+inscribed square. A circle of diameter `D` is too small for that, so the first
+font change would stretch the badge, and Excalidraw would not let it shrink.
 
 For aligned examples, derive shared dimensions from the widest header and
 member among peers. Inspect that badges remain circular, letters are centered,

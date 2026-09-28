@@ -596,12 +596,13 @@ function drawType(builder, type, geometry, layout, prefix) {
     let nameX = x + BOX.padX;
     if (geometry.hasBadge) {
       const size = geometry.badgeSize;
+      const badgeGroupIds = [`${prefix}${type.id}-badge-group`, ...groupIds];
       const badge = builder.base(`${prefix}${type.id}-badge`, "ellipse", nameX, y + (geometry.headerHeight - size) / 2, size, size, {
         backgroundColor: style.theme.white,
         strokeWidth: 1,
-        groupIds,
+        groupIds: badgeGroupIds,
       });
-      builder.boundText(badge, `${prefix}${type.id}-badge-text`, KINDS[type.kind].badge, geometry.fontSize - 2, groupIds);
+      builder.centeredText(badge, `${prefix}${type.id}-badge-text`, KINDS[type.kind].badge, geometry.fontSize - 2, badgeGroupIds);
       nameX += size + BOX.badgeGap;
     }
     builder.text(`${prefix}${type.id}-name`, type.name, nameX, y + (geometry.headerHeight - geometry.nameSize.height) / 2,
