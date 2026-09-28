@@ -38,7 +38,7 @@ const KINDS = {
   class: { badge: "C" },
   interface: { badge: "I" },
   abstract: { badge: "A" },
-  struct: { badge: null },
+  struct: { badge: "S" },
   note: { badge: null },
 };
 
@@ -719,7 +719,7 @@ function normalizeLegend(items, style) {
     const tone = item.tone ?? style.kindTones[item.kind] ?? style.tone;
     shade(style, tone, 1);
     if (item.kind !== undefined) {
-      if (!KINDS[item.kind]?.badge) throw new SpecError(`${where}.kind must be class, interface, or abstract`);
+      if (!KINDS[item.kind]?.badge) throw new SpecError(`${where}.kind must be class, interface, abstract, or struct`);
       return { marker: "badge", text: KINDS[item.kind].badge, backgroundColor: fillOf(style, tone, 2), label };
     }
     if (item.relation !== undefined) {

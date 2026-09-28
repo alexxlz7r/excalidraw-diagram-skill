@@ -77,9 +77,9 @@ most capable model with a brief instead of a fork.
      retain unspecified styling from the existing scene.
 3. For visual patterns, evidence artifacts, hierarchy, layout, and the quality
    bar, read [references/design-guidance.md](references/design-guidance.md).
-4. For application design diagrams involving classes, interfaces, or abstract
-   classes (C/I/A badges), actors and use cases, interaction sequences, or
-   control and state flows, read
+4. For application design diagrams involving classes, interfaces, abstract
+   classes, or structs (C/I/A/S badges), actors and use cases, interaction
+   sequences, or control and state flows, read
    [references/application-design.md](references/application-design.md).
    Generate the scene from a spec instead of authoring coordinates by hand:
 

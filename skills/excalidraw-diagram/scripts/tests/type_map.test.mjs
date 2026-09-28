@@ -216,13 +216,15 @@ test("structs render as records and highlights default to the type tone", async 
       { id: "file", kind: "struct", tone: "violet", members: [{ text: "f_pos", highlight: true }, "f_op"] },
       { id: "plain", members: [{ text: "field", highlight: true }] },
     ],
-    legend: [{ highlight: true, label: "shared" }, { tone: "violet", label: "file" }],
+    legend: [{ highlight: true, label: "shared" }, { tone: "violet", label: "file" }, { kind: "struct", label: "struct" }],
   });
   const elements = byId(scene);
   const file = elements.get("file");
   const header = elements.get("file-header");
   assert.equal(header.x, file.x, "record title bar spans the full width");
   assert.equal(header.width, file.width);
+  assert.equal(elements.get("file-badge-text").text, "S");
+  assert.equal(elements.get("legend-2-badge-text").text, "S");
   assert.equal(header.backgroundColor, DEFAULT_THEME.hues.violet[1]);
   assert.equal(elements.get("file-member-0-cell").backgroundColor, DEFAULT_THEME.hues.violet[2]);
   assert.equal(elements.get("plain-member-0-highlight").backgroundColor, DEFAULT_THEME.hues.yellow[1]);

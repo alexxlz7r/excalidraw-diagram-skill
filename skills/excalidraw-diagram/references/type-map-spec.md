@@ -98,7 +98,7 @@ draws one rounded ink outline and divides the compartments with rules.
 A struct with cells is drawn as a record: a header with the member cells
 directly below it, one cell per member.
 
-Legend items have a `label` and one marker: `{ kind, tone }` for a C/I/A
+Legend items have a `label` and one marker: `{ kind, tone }` for a C/I/A/S
 badge, `{ tone }` for a type color, `{ highlight }` (a hue or `true`) for a
 highlighted row, or `{ relation, tone }` for a connector sample.
 
@@ -120,7 +120,7 @@ highlighted row, or `{ relation, tone }` for a connector sample.
 | --- | --- | --- |
 | `id` | required | Unique in its panel. Relations refer to it. |
 | `name` | `id` | Header text. |
-| `kind` | `class` | `class` (C), `interface` (I), `abstract` (A), `struct` (no badge), or `note` (dashed box without a header). Set `struct` explicitly for C or kernel structures; the default draws a C badge. |
+| `kind` | `class` | `class` (C), `interface` (I), `abstract` (A), `struct` (S), or `note` (dashed box without a header). Set `struct` explicitly for data records, such as C or kernel structures and DTOs; the default draws a C badge. |
 | `group` | none | Group ID. |
 | `tone` | kind tone or style tone | Palette hue for the fills. |
 | `note` | none | Responsibility line or lines above the members. For `kind: "note"`, use `text`. |

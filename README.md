@@ -140,9 +140,9 @@ the installed skill.
 The skill supports a deliberately small, lightweight UML-like vocabulary for
 software work:
 
-- type maps with C/I/A circle badges for classes, interfaces, and abstract
-  classes, fill hues by architectural role, lighter-to-stronger fills by type
-  kind, and simplified UML connectors;
+- type maps with C/I/A/S circle badges for classes, interfaces, abstract
+  classes, and structs, fill hues by architectural role, lighter-to-stronger
+  fills by type kind, and simplified UML connectors;
 - use-case maps for actors, product boundaries, and user goals;
 - sequence diagrams for calls, events, responses, retries, and failures;
 - flow/state diagrams for decisions, lifecycle changes, and recovery paths.

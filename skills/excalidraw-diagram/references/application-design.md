@@ -22,8 +22,8 @@ regions with distinct reading directions.
 Use a type map to explain the design surface, not to inventory every symbol in
 the codebase.
 
-- Use the letter-badge notation below for classes, interfaces, and abstract
-  classes. Keep an explicit `protocol` tag for protocols when that distinction
+- Use the letter-badge notation below for classes, interfaces, abstract
+  classes, and structs. Keep an explicit `protocol` tag for protocols when that distinction
   matters in the source language.
 - Give each type a strong name and one short responsibility. Add only fields or
   operations that explain a relationship, constraint, or extension point.
@@ -53,6 +53,7 @@ sharp corners, and `sketch` draws one rounded outline divided by rules. See
 | Concrete class | `C` | `orange` |
 | Interface | `I` | `blue` |
 | Abstract class | `A` | `violet` |
+| Struct: a data record without behavior | `S` | `gray` |
 
 Keep the letters and their meanings stable across styles, with dark readable
 text and outlines. The letter carries the kind independently of color, so a
@@ -80,7 +81,7 @@ domain/adapters/infrastructure, or another useful partition. Assign one
 palette hue per role, give it to every type of the role (`tone` in a type map
 spec), and explain the mapping in a small legend or labeled zones. The header
 uses the second shade of the hue and the compartments the lightest shade; the
-C/I/A letters keep the kind visible.
+C/I/A/S letters keep the kind visible.
 
 `sketch` has no color. Show roles in `sketch` with zones and their titles.
 
@@ -104,8 +105,8 @@ Use composition for exclusive whole/part ownership with lifecycle semantics;
 a reference or injected service alone justifies an association or dependency.
 Use shared aggregation only when that distinction is explicit and useful.
 Label an otherwise ambiguous line with a short verb or role name. Include
-multiplicity only when known and relevant. C/I/A badges and role tints are the
-visual shorthand; connector semantics remain UML.
+multiplicity only when known and relevant. C/I/A/S badges and role tints are
+the visual shorthand; connector semantics remain UML.
 
 Use native Excalidraw arrowheads and reciprocal bindings to the outer type
 rectangles, as mapped in
