@@ -488,6 +488,52 @@ export function elkMinimumSize(direction, width) {
   return direction === "DOWN" || direction === "UP" ? `(0,${width})` : `(${width},0)`;
 }
 
+// The sides of each zone where a segment of a route runs inside the zone
+// closer than `gap` to the border. `zones` maps an ID to a box; `routes` are
+// lists of points. The result maps a zone ID to a set of `top`, `left`,
+// `bottom`, and `right`.
+function crowdedSides(zones, routes, gap) {
+  const crowded = new Map();
+  const segments = routes.flatMap((points) => points.slice(1).map((point, index) => [points[index], point]));
+  for (const [id, zone] of zones) {
+    const sides = new Set();
+    for (const [a, b] of segments) {
+      const vertical = a[0] === b[0];
+      if (vertical === (a[1] === b[1])) continue;
+      // `at` is the coordinate across the segment; `axis` runs along it.
+      const [at, axis] = vertical ? [a[0], 1] : [a[1], 0];
+      const [start, size] = vertical ? [zone.x, zone.width] : [zone.y, zone.height];
+      const [alongStart, alongSize] = vertical ? [zone.y, zone.height] : [zone.x, zone.width];
+      const overlap = Math.min(Math.max(a[axis], b[axis]), alongStart + alongSize) - Math.max(Math.min(a[axis], b[axis]), alongStart);
+      if (at <= start || at >= start + size || overlap <= 0) continue;
+      if (at - start < gap) sides.add(vertical ? "left" : "top");
+      if (start + size - at < gap) sides.add(vertical ? "right" : "bottom");
+    }
+    if (sides.size > 0) crowded.set(id, sides);
+  }
+  return crowded;
+}
+
+// ELK keeps only the zone padding between a zone border and an edge that runs
+// inside the zone along it, so the edge reads as one more border. Call
+// `layOut(wide)` with the sides of each zone that need a double padding, and
+// again with more sides, until no edge runs inside a zone closer than two
+// paddings to its border. `layOut` returns `{ zones, routes }` for the check,
+// and other fields as needed. Return the last result.
+export async function layOutClearOfBorders(layOut, pad) {
+  const wide = new Map();
+  for (;;) {
+    const result = await layOut(wide);
+    let added = false;
+    for (const [id, sides] of crowdedSides(result.zones, result.routes, 2 * pad)) {
+      const known = wide.get(id) ?? new Set();
+      added ||= [...sides].some((side) => !known.has(side));
+      wide.set(id, new Set([...known, ...sides]));
+    }
+    if (!added) return result;
+  }
+}
+
 // A zone is a boundary, such as a system, a scope, a group of states, or a
 // journey. `parent` nests it in another zone. `field` names the spec field
 // and `noun` one item in errors. Without a label, a zone takes its id as the

@@ -513,3 +513,35 @@ test("sketch has no colors, so a tone legend item is an error", async () => {
     (error) => error instanceof SpecError && /sketch/.test(error.message),
   );
 });
+
+test("a connector inside a zone keeps clear of the zone border", async () => {
+  // Nested zone borders are 24 px apart. A connector at that distance from a
+  // border reads as one more border.
+  const scene = await buildTypeMap({
+    direction: "DOWN",
+    groups: [{ id: "g", label: "zone" }],
+    types: [
+      { id: "Outside", members: ["x"] },
+      { id: "Source", group: "g", members: ["x"] },
+      { id: "Inside", group: "g", members: ["x"] },
+    ],
+    relations: [
+      { from: "Source", to: "Outside", type: "depends" },
+      { from: "Source", to: "Inside", type: "navigates" },
+    ],
+  });
+  const zone = byId(scene).get("group-g");
+  let along = 0;
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+    const points = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
+    for (const [a, b] of points.slice(1).map((point, index) => [points[index], point])) {
+      if (a[0] !== b[0] || a[1] === b[1] || a[0] <= zone.x || a[0] >= zone.x + zone.width) continue;
+      const inZone = Math.min(Math.max(a[1], b[1]), zone.y + zone.height) - Math.max(Math.min(a[1], b[1]), zone.y);
+      if (inZone <= 0) continue;
+      along += 1;
+      const gap = Math.min(a[0] - zone.x, zone.x + zone.width - a[0]);
+      assert.ok(gap >= 40, `${arrow.id} runs ${gap} px from the zone border`);
+    }
+  }
+  assert.ok(along > 0, "a connector runs along the zone border");
+});

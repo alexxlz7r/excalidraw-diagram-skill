@@ -1,6 +1,6 @@
 /** Layered graph layout with ELK for the node-and-edge generators: zones, ports, back edges, and edge labels. */
 
-import { bindArrow, elkMinimumSize, END_SEGMENT, FLOW_SIDES, labelArrow, loadElk, SpecError } from "./scene.mjs";
+import { bindArrow, elkMinimumSize, END_SEGMENT, FLOW_SIDES, labelArrow, layOutClearOfBorders, loadElk, SpecError } from "./scene.mjs";
 
 // Space around the nodes of a zone, and above them for the zone label.
 const ZONE = { pad: 24, labelGap: 8, labelMargin: 64 };
@@ -146,17 +146,20 @@ function besideLabels(node, direction, ports) {
 }
 
 // Without a draft, ELK chooses free ports. The draft then orders the ports of
-// the final layout.
-function buildElkGraph(graph, context, draft = null) {
+// the final layout. `wide` maps a zone ID to the sides that get a double
+// padding.
+function buildElkGraph(graph, context, draft = null, wide = new Map()) {
   const ports = draft === null ? new Map() : planPorts(graph, context, draft);
   const zones = new Map(graph.groups.map((group) => {
     const label = group.label ?? { width: 0, height: 0 };
-    const top = ZONE.pad + (group.label ? Math.ceil(label.height) + ZONE.labelGap : 0);
+    const sides = wide.get(group.id) ?? new Set();
+    const pad = (side) => (sides.has(side) ? 2 : 1) * ZONE.pad;
+    const top = pad("top") + (group.label ? Math.ceil(label.height) + ZONE.labelGap : 0);
     return [group.id, {
       id: group.id,
       layoutOptions: {
         ...CONTAINER_OPTIONS,
-        "elk.padding": `[top=${top},left=${ZONE.pad},bottom=${ZONE.pad},right=${ZONE.pad}]`,
+        "elk.padding": `[top=${top},left=${pad("left")},bottom=${pad("bottom")},right=${pad("right")}]`,
         "elk.nodeSize.constraints": "MINIMUM_SIZE",
         "elk.nodeSize.minimum": elkMinimumSize(graph.direction, Math.ceil(label.width + ZONE.labelMargin)),
       },
@@ -469,8 +472,12 @@ export async function layoutGraph(graph) {
   const context = { back, straight: straightEdges(graph, back), nodes: new Map(graph.nodes.map((node) => [node.id, node])) };
   const elk = await loadElk();
   const draft = flattenLayout(await elk.layout(buildElkGraph(graph, context)));
-  const layout = await elk.layout(buildElkGraph(graph, context, draft));
-  const placed = flattenLayout(layout);
+  const { layout, placed } = await layOutClearOfBorders(async (wide) => {
+    const result = await elk.layout(buildElkGraph(graph, context, draft, wide));
+    const boxes = flattenLayout(result);
+    const zones = new Map(graph.groups.map((group) => [group.id, boxes.get(group.id)]));
+    return { layout: result, placed: boxes, zones, routes: result.edges.map(routeOf) };
+  }, ZONE.pad);
 
   const nodes = new Map(graph.nodes.map((node) => {
     const box = placed.get(node.id);

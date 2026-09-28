@@ -647,3 +647,30 @@ test("no other edge runs through an edge label", async () => {
     }
   }
 });
+
+test("an edge inside a zone keeps clear of the zone border", async () => {
+  // Nested zone borders are 24 px apart. An edge at that distance from a
+  // border reads as one more border.
+  const scene = await buildFlow({
+    groups: [{ id: "z", label: "Z" }],
+    nodes: [{ id: "a", group: "z" }, { id: "b", group: "z" }, { id: "c", group: "z" }],
+    edges: [
+      { from: "a", to: "b", path: "main" },
+      { from: "b", to: "c", path: "main" },
+      { from: "c", to: "b" },
+    ],
+  });
+  const zone = byId(scene).get("group-z");
+  const arrows = scene.elements.filter((element) => element.type === "arrow");
+  let parallel = 0;
+  for (const arrow of arrows) {
+    const points = globalPoints(arrow);
+    for (const [a, b] of points.slice(1).map((point, index) => [points[index], point])) {
+      if (a[0] !== b[0] || a[1] === b[1]) continue;
+      parallel += 1;
+      const gap = Math.min(a[0] - zone.x, zone.x + zone.width - a[0]);
+      assert.ok(gap >= 40, `${arrow.id} runs ${gap} px from the zone border`);
+    }
+  }
+  assert.ok(parallel > 0, "an edge runs along the zone border");
+});

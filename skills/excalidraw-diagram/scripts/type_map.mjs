@@ -16,6 +16,7 @@ import {
   FLOW_SIDES,
   highlightFill,
   labelArrow,
+  layOutClearOfBorders,
   LINE_HEIGHT,
   loadElk,
   measure,
@@ -296,6 +297,9 @@ function memberCenterY(geometry, memberIndex) {
   return geometry.rowTops[memberIndex] + geometry.rowHeights[memberIndex] / 2;
 }
 
+// Space around the types of a zone.
+const ZONE_PAD = 24;
+
 const FORWARD_SIDE = { RIGHT: "EAST", LEFT: "WEST" };
 const BACKWARD_SIDE = { RIGHT: "WEST", LEFT: "EAST" };
 
@@ -305,7 +309,8 @@ function center(node) {
 
 // Without a draft, ELK chooses free ports; the draft layout then orders the
 // final ports so that connectors spread evenly and do not cross at a type.
-function buildElkGraph(graph, style, geometries, sides, draft) {
+// `wide` maps a group ID to the sides that get a double padding.
+function buildElkGraph(graph, style, geometries, sides, draft, wide = new Map()) {
   const ports = new Map();
   const nodes = new Map();
   const usesPartitions = [...graph.types.values()].some((type) => type.layer !== null);
@@ -324,11 +329,12 @@ function buildElkGraph(graph, style, geometries, sides, draft) {
   for (const group of graph.groups.values()) {
     const label = group.label === "" ? { width: 0, height: 0 } : measure(group.label, style.fontSize, style);
     const labelHeight = group.label === "" ? 0 : label.height + 8;
+    const pad = (side) => (wide.get(group.id)?.has(side) ? 2 : 1) * ZONE_PAD;
     nodes.set(group.id, {
       id: group.id,
       layoutOptions: {
         ...containerOptions,
-        "elk.padding": `[top=${Math.ceil(24 + labelHeight)},left=24,bottom=24,right=24]`,
+        "elk.padding": `[top=${Math.ceil(pad("top") + labelHeight)},left=${pad("left")},bottom=${pad("bottom")},right=${pad("right")}]`,
         "elk.nodeSize.constraints": "MINIMUM_SIZE",
         "elk.nodeSize.minimum": elkMinimumSize(graph.direction, Math.ceil(label.width + 64)),
       },
@@ -677,8 +683,12 @@ async function layoutGraph(elk, graph, style, prefix) {
   const geometries = new Map([...graph.types.values()].map((type) => [type.id, typeGeometry(type, style)]));
   const draft = flattenLayout(await elk.layout(buildElkGraph(graph, style, geometries, null, null)));
   const sides = resolveSides(graph, draft);
-  const layout = await elk.layout(buildElkGraph(graph, style, geometries, sides, draft));
-  const layoutNodes = flattenLayout(layout);
+  const { layout, layoutNodes } = await layOutClearOfBorders(async (wide) => {
+    const result = await elk.layout(buildElkGraph(graph, style, geometries, sides, draft, wide));
+    const boxes = flattenLayout(result);
+    const zones = new Map([...graph.groups.keys()].map((id) => [id, boxes.get(id)]));
+    return { layout: result, layoutNodes: boxes, zones, routes: result.edges.map(sectionPoints) };
+  }, ZONE_PAD);
   const builder = new SceneBuilder(style);
 
   const depth = (group) => (group.parent === null ? 0 : 1 + depth(graph.groups.get(group.parent)));
