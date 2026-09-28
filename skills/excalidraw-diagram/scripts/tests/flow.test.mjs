@@ -359,6 +359,29 @@ test("nothing enters an entry, and nothing leaves a terminal outcome", async () 
     error instanceof SpecError && /edges\[4\]/.test(error.message) && /end "done"/.test(error.message));
 });
 
+// The short segments of an arrow between two turns: steps of a few pixels.
+function jogsOf(arrow, limit = 24) {
+  const all = globalPoints(arrow);
+  const straight = (a, p, b) => (Math.abs(a[0] - p[0]) < 0.5 && Math.abs(p[0] - b[0]) < 0.5)
+    || (Math.abs(a[1] - p[1]) < 0.5 && Math.abs(p[1] - b[1]) < 0.5);
+  const points = all.filter((point, index) => index === 0 || index === all.length - 1 || !straight(all[index - 1], point, all[index + 1]));
+  const jogs = [];
+  for (let index = 1; index + 2 < points.length; index += 1) {
+    const length = Math.hypot(points[index + 1][0] - points[index][0], points[index + 1][1] - points[index][1]);
+    if (length < limit) jogs.push(length);
+  }
+  return jogs;
+}
+
+test("an edge into a group does not step aside at the zone border", async () => {
+  for (const style of ["clean", "sketch"]) {
+    const elements = byId(await buildFlow({ ...lifecycle, style }));
+    const enter = elements.get("e6");
+    assert.equal(enter.endBinding.elementId, "group-liquid");
+    assert.deepEqual(jogsOf(enter).map((length) => length.toFixed(1)), [], `${style}: e6 has no step`);
+  }
+});
+
 test("groups nest: an inner group sits inside its parent, one fill level deeper", async () => {
   const nested = {
     ...lifecycle,

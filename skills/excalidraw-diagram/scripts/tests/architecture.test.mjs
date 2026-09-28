@@ -299,6 +299,34 @@ test("parallel runs of links between two layers stay 20 px apart", async () => {
   }
 });
 
+// The short segments of an arrow between two turns: steps of a few pixels.
+function jogsOf(arrow, limit = 24) {
+  const all = globalPoints(arrow);
+  const straight = (a, p, b) => (Math.abs(a[0] - p[0]) < 0.5 && Math.abs(p[0] - b[0]) < 0.5)
+    || (Math.abs(a[1] - p[1]) < 0.5 && Math.abs(p[1] - b[1]) < 0.5);
+  const points = all.filter((point, index) => index === 0 || index === all.length - 1 || !straight(all[index - 1], point, all[index + 1]));
+  const jogs = [];
+  for (let index = 1; index + 2 < points.length; index += 1) {
+    const length = Math.hypot(points[index + 1][0] - points[index][0], points[index + 1][1] - points[index][1]);
+    if (length < limit) jogs.push(length);
+  }
+  return jogs;
+}
+
+test("links do not step aside by a few pixels where they cross a zone border", async () => {
+  const scene = await buildArchitecture({
+    zones: [{ id: "top" }, { id: "bottom" }],
+    components: [
+      ...["a", "b", "c"].map((id) => ({ id, zone: "top" })),
+      ...["d", "e", "f"].map((id) => ({ id, zone: "bottom" })),
+    ],
+    links: [{ from: "c", to: "f" }, { from: "c", to: "d" }, { from: "b", to: "e" }],
+  });
+  for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+    assert.deepEqual(jogsOf(arrow).map((length) => length.toFixed(1)), [], `${arrow.id} has no step`);
+  }
+});
+
 test("zone references are checked", async () => {
   const cases = [
     [{ ...workspace, components: [{ id: "x", zone: "nowhere" }] }, /components\[0\]: unknown zone "nowhere"/],

@@ -263,6 +263,109 @@ function clipToOutline(outline, box, adjacent, edge) {
 
 const boxOf = ({ x, y, width, height }) => ({ x, y, width, height });
 
+// A step shorter than this between two parallel segments is a jog: ELK places
+// the port on a zone border and the port on the node apart.
+const JOG = 24;
+// A moved end keeps this distance from the corners of its side and from the
+// other edge ends on the side.
+const JOG_END = { corner: 12, spacing: 16 };
+// A moved segment keeps this distance from parallel segments of other edges.
+const JOG_SPACING = 16;
+
+const segmentsOf = (points) => points.slice(1).map((point, index) => [points[index], point]);
+const sameSegment = ([a, b], [c, d]) => a[0] === c[0] && a[1] === c[1] && b[0] === d[0] && b[1] === d[1];
+
+// Whether an axis-aligned segment runs through the inside of a box.
+function crossesBox([a, b], box) {
+  const [x0, x1] = [Math.min(a[0], b[0]), Math.max(a[0], b[0])];
+  const [y0, y1] = [Math.min(a[1], b[1]), Math.max(a[1], b[1])];
+  return x1 > box.x + 1 && x0 < box.x + box.width - 1 && y1 > box.y + 1 && y0 < box.y + box.height - 1;
+}
+
+// Whether two axis-aligned segments run parallel and closer than `gap`.
+function runsClose([a, b], [c, d], gap) {
+  const axis = a[0] === b[0] ? 0 : 1;
+  if ((c[0] === d[0] ? 0 : 1) !== axis) return false;
+  const along = 1 - axis;
+  const overlap = Math.min(Math.max(a[along], b[along]), Math.max(c[along], d[along]))
+    - Math.max(Math.min(a[along], b[along]), Math.min(c[along], d[along]));
+  return overlap > 0 && Math.abs(a[axis] - c[axis]) < gap;
+}
+
+// Whether a point lies on an axis-aligned segment.
+function onSegment(point, [a, b]) {
+  return point[0] >= Math.min(a[0], b[0]) - 1 && point[0] <= Math.max(a[0], b[0]) + 1
+    && point[1] >= Math.min(a[1], b[1]) - 1 && point[1] <= Math.max(a[1], b[1]) + 1;
+}
+
+// Remove jogs: move one of the two parallel segments beside a jog onto the
+// line of the other. A move must keep the segment clear of the nodes, of the
+// text beside them, and of the parallel segments of other edges. A moved end
+// must stay on its side of a box, clear of the corners and of the other edge
+// ends there. A label on a moved segment moves with it.
+function removeJogs(graph, edges, nodes, boxAt, outlineOf) {
+  // The own nodes of an edge are not obstacles: a route ends on them, and a
+  // route to a diamond or a circle ends inside the box.
+  const obstacles = [...nodes].flatMap(([id, node]) => [
+    { id, ...node },
+    ...[...node.beside.values()].map((text) => ({ id: `${id} beside`, ...text })),
+  ]);
+  const endsOn = (id, except) => [...edges].flatMap(([edgeId, { points }]) => {
+    if (edgeId === except) return [];
+    const edge = graph.edges.find((item) => item.id === edgeId);
+    return [[edge.from, points[0]], [edge.to, points.at(-1)]].filter(([end]) => end === id).map(([, point]) => point);
+  });
+  const endFits = (id, point, axis) => {
+    if (outlineOf(id) !== "box") return false;
+    const box = boxAt(id);
+    const [start, length] = axis === 0 ? [box.x, box.width] : [box.y, box.height];
+    return point[axis] >= start + JOG_END.corner && point[axis] <= start + length - JOG_END.corner;
+  };
+  for (const edge of graph.edges) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const { points, labelCenter } = edges.get(edge.id);
+      for (let index = 1; index + 2 < points.length && !changed; index += 1) {
+        const [p, q] = [points[index], points[index + 1]];
+        const length = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+        if (length === 0 || length >= JOG) continue;
+        // The coordinate that the jog changes: x for a horizontal jog.
+        const axis = p[1] === q[1] ? 0 : 1;
+        const candidates = [
+          // Move the segment after the jog onto the line before it.
+          { moved: [index + 1, index + 2], drop: index + 1, to: p[axis], end: index + 2 === points.length - 1 ? "to" : null },
+          // Move the segment before the jog onto the line after it.
+          { moved: [index - 1, index], drop: index, to: q[axis], end: index - 1 === 0 ? "from" : null },
+        ];
+        for (const { moved, drop, to, end } of candidates) {
+          const next = points.map((point, at) => (moved.includes(at) ? Object.assign([...point], { [axis]: to }) : point));
+          next.splice(drop, 1);
+          if (end !== null) {
+            const id = edge[end];
+            const point = end === "to" ? next.at(-1) : next[0];
+            if (!endFits(id, point, axis)) continue;
+            if (endsOn(id, edge.id).some((other) => Math.hypot(other[0] - point[0], other[1] - point[1]) < JOG_END.spacing)) continue;
+          }
+          const fresh = segmentsOf(next).filter((segment) => !segmentsOf(points).some((old) => sameSegment(old, segment)));
+          const own = new Set([edge.from, edge.to]);
+          const blocked = fresh.some((segment) =>
+            obstacles.some((box) => !own.has(box.id) && crossesBox(segment, box))
+            || [...edges].some(([id, other]) => id !== edge.id
+              && segmentsOf(other.points).some((line) => runsClose(segment, line, JOG_SPACING))));
+          if (blocked) continue;
+          const shift = to - points[moved[0]][axis];
+          const carried = labelCenter !== null && onSegment(labelCenter, [points[moved[0]], points[moved[1]]]);
+          const label = carried ? Object.assign([...labelCenter], { [axis]: labelCenter[axis] + shift }) : labelCenter;
+          edges.set(edge.id, { points: next, labelCenter: label });
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
 // Lay out a directed graph in layers along `direction`.
 //
 // - `groups`: `{ id, parent, label }`, parents before children. `label` is the
@@ -307,6 +410,7 @@ export async function layoutGraph(graph) {
     const labelCenter = label ? [label.x + label.width / 2, label.y + label.height / 2] : null;
     edges.set(edge.id, { points, labelCenter });
   }
+  removeJogs(graph, edges, nodes, boxAt, outlineOf);
   return { nodes, groups, edges };
 }
 
