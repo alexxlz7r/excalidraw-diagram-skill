@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
-import { PALETTE, rebindScene } from "../scene.mjs";
+import { rebindScene } from "../scene.mjs";
+import { DEFAULT_THEME } from "../theme.mjs";
 import { buildFlow, SpecError } from "../flow.mjs";
 import { textWidth } from "../layout.mjs";
 
@@ -226,7 +227,7 @@ test("the path of an edge sets its weight, color, and dash in each style", async
     { from: "d", to: "a", label: "retry", path: "recovery" },
   ];
   const spec = { nodes: ["a", "b", "c", "d"].map((id) => ({ id })), edges };
-  const ink = PALETTE.black;
+  const ink = DEFAULT_THEME.black;
   const looks = (elements) => ["e1", "e2", "e3", "e4"].map((id) => {
     const { strokeColor, strokeWidth, strokeStyle } = elements.get(id);
     return { strokeColor, strokeWidth, strokeStyle };
@@ -236,8 +237,8 @@ test("the path of an edge sets its weight, color, and dash in each style", async
   assert.deepEqual(looks(clean), [
     { strokeColor: ink, strokeWidth: 3, strokeStyle: "solid" },
     { strokeColor: ink, strokeWidth: 2, strokeStyle: "solid" },
-    { strokeColor: PALETTE.shades.red[4], strokeWidth: 2, strokeStyle: "dashed" },
-    { strokeColor: PALETTE.shades.green[4], strokeWidth: 2, strokeStyle: "dashed" },
+    { strokeColor: DEFAULT_THEME.hues.red[4], strokeWidth: 2, strokeStyle: "dashed" },
+    { strokeColor: DEFAULT_THEME.hues.green[4], strokeWidth: 2, strokeStyle: "dashed" },
   ]);
   assert.equal(clean.get("e3-label").strokeColor, ink, "labels stay in ink for contrast");
 
@@ -467,7 +468,7 @@ test("the legend shows path samples, and the footnote closes the scene", async (
   const main = elements.get("legend-0-line");
   const failure = elements.get("legend-1-line");
   assert.deepEqual([main.strokeWidth, main.strokeStyle], [3, "solid"]);
-  assert.deepEqual([failure.strokeColor, failure.strokeStyle], [PALETTE.shades.red[4], "dashed"]);
+  assert.deepEqual([failure.strokeColor, failure.strokeStyle], [DEFAULT_THEME.hues.red[4], "dashed"]);
   assert.equal(elements.get("legend-1-label").text, "exclusion");
   const zone = elements.get("group-liquid");
   assert.ok(main.y > zone.y + zone.height, "the legend is below the diagram");

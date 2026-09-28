@@ -19,6 +19,9 @@ product or subsystem.
    node scripts/use_cases.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
+   To use a theme other than the default, add `--theme <file>`. See
+   [theme.md](theme.md#use-the-theme).
+
 4. If the script prints a width warning, break long names into lines, or
    split the map by journey.
 5. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
@@ -75,9 +78,9 @@ not wrap text: break long names into lines in the spec.
 | `footnote` | none | Text below the diagram. |
 
 `style` object fields: `preset`, `fontSize` (20), `fontFamily`, `roughness`,
-`background`, `ink`, and `tone` (`gray`), the tone of the boundary and of
-use cases outside a journey. See
-[type-map-spec.md](type-map-spec.md#top-level) for the values of each preset.
+and `tone` (`gray`), the tone of the boundary and of use cases outside a
+journey. See [type-map-spec.md](type-map-spec.md#top-level) for the values of
+each preset.
 
 ### Actor
 

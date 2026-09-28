@@ -40,14 +40,14 @@ const CAP = 18;
 
 // A role is a category of components, such as app, domain, or storage. Its
 // tone colors every component of the role in clean.
-function normalizeRoles(items) {
+function normalizeRoles(items, style) {
   const roles = new Map();
   for (const [index, item] of asArray(items, "roles").entries()) {
     const where = `roles[${index}]`;
     const id = requireId(item?.id, `${where}.id`);
     if (roles.has(id)) throw new SpecError(`duplicate role "${id}"`);
     if (item.tone === undefined) throw new SpecError(`${where}.tone is required`);
-    shade(item.tone, 1);
+    shade(style, item.tone, 1);
     roles.set(id, { id, label: textOf(item.label ?? id, `${where}.label`), tone: item.tone });
   }
   return roles;
@@ -66,7 +66,7 @@ function normalizeComponents(items, roles, zones, style) {
     const role = item.role ?? null;
     if (role !== null && !roles.has(role)) throw new SpecError(`${where}: unknown role "${role}"`);
     const tone = item.tone ?? roles.get(role)?.tone ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     components.set(id, {
       id,
       kind,
@@ -83,7 +83,7 @@ function normalizeComponents(items, roles, zones, style) {
 }
 
 // A link joins two components, or a component and a zone.
-function normalizeLinks(items, components, zones) {
+function normalizeLinks(items, components, zones, style) {
   return asArray(items, "links").map((item, index) => {
     const where = `links[${index}]`;
     for (const end of ["from", "to"]) {
@@ -94,7 +94,7 @@ function normalizeLinks(items, components, zones) {
     if (!Object.hasOwn(LINK_DASHES, kind)) {
       throw new SpecError(`${where}.kind must be one of ${Object.keys(LINK_DASHES).join(", ")}`);
     }
-    if (item.tone !== undefined) shade(item.tone, 1);
+    if (item.tone !== undefined) shade(style, item.tone, 1);
     return {
       id: `l${index + 1}`,
       from: item.from,
@@ -142,12 +142,12 @@ function normalizeLegend(items, { style, roles, links }) {
   });
 }
 
-export function normalizeSpec(spec) {
+export function normalizeSpec(spec, { theme } = {}) {
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) throw new SpecError("spec must be an object");
-  const style = resolveStyle(spec.style);
+  const style = resolveStyle(spec.style, {}, theme);
   const direction = spec.direction ?? "DOWN";
   if (!DIRECTIONS.has(direction)) throw new SpecError(`direction must be one of ${[...DIRECTIONS].join(", ")}`);
-  const roles = normalizeRoles(spec.roles);
+  const roles = normalizeRoles(spec.roles, style);
   const zones = normalizeZones(spec.zones, style, { field: "zones", noun: "zone" });
   const components = normalizeComponents(spec.components, roles, zones, style);
   const graph = {
@@ -158,7 +158,7 @@ export function normalizeSpec(spec) {
     roles,
     zones,
     components,
-    links: normalizeLinks(spec.links, components, zones),
+    links: normalizeLinks(spec.links, components, zones, style),
     footnote: textOf(spec.footnote, "footnote"),
   };
   graph.legend = normalizeLegend(spec.legend, graph);
@@ -279,8 +279,8 @@ function linkLook(style, link) {
   };
 }
 
-export async function buildArchitecture(spec) {
-  const graph = normalizeSpec(spec);
+export async function buildArchitecture(spec, options = {}) {
+  const graph = normalizeSpec(spec, options);
   const { style } = graph;
   const geometries = new Map([...graph.components.values()].map((component) => [
     component.id,

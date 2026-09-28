@@ -20,6 +20,9 @@ events: `payment.confirmed`). The notation is the same.
    node scripts/flow.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
+   To use a theme other than the default, add `--theme <file>`. See
+   [theme.md](theme.md#use-the-theme).
+
 4. If the script prints a width warning, use `"direction": "DOWN"`, break
    long labels into lines, or split the diagram.
 5. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
@@ -79,10 +82,10 @@ not wrap text: break long labels and notes into lines in the spec.
 | `footnote` | none | Text below the legend. |
 
 `style` object fields: `preset`, `fontSize` (20), `fontFamily`, `roughness`,
-`background`, `ink`, `tone` (`gray`), the default tone of groups, and
-`kindTones` (`{ "step": "blue", "decision": "pink" }`), the default tone per
-node kind in `clean`. See [type-map-spec.md](type-map-spec.md#top-level) for
-the values of each preset.
+`tone` (`gray`), the default tone of groups, and `kindTones`
+(`{ "step": "blue", "decision": "pink" }`), the default tone per node kind in
+`clean`. See [type-map-spec.md](type-map-spec.md#top-level) for the values of
+each preset.
 
 ### Node
 

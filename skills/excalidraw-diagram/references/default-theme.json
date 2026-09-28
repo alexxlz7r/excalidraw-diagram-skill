@@ -1,46 +1,20 @@
 {
-  "canvas": {
-    "background": "#FFFFFF",
-    "exportBackground": true
-  },
-  "text": {
-    "primary": "#172033",
-    "secondary": "#475569",
-    "onFill": "#172033"
-  },
-  "accents": {
-    "primary": { "fill": "#DBEAFE", "stroke": "#1D4ED8" },
-    "secondary": { "fill": "#E0E7FF", "stroke": "#4338CA" },
-    "tertiary": { "fill": "#EDE9FE", "stroke": "#6D28D9" }
-  },
-  "states": {
-    "start": { "fill": "#FFF1D6", "stroke": "#9A3412", "cue": "ellipse or entry marker" },
-    "success": { "fill": "#DCFCE7", "stroke": "#166534", "cue": "end marker or check label" },
-    "warning": { "fill": "#FEF3C7", "stroke": "#92400E", "cue": "warning label or icon" },
-    "decision": { "fill": "#FCE7F3", "stroke": "#9D174D", "cue": "diamond" },
-    "ai": { "fill": "#EDE9FE", "stroke": "#6D28D9", "cue": "explicit AI label" },
-    "error": { "fill": "#FEE2E2", "stroke": "#991B1B", "cue": "error label and strong outline" },
-    "inactive": { "fill": "#F1F5F9", "stroke": "#64748B", "cue": "dashed outline" }
-  },
-  "lines": {
-    "arrow": "#334155",
-    "structural": "#64748B"
-  },
-  "evidence": {
-    "background": "#172033",
-    "codeText": "#F8FAFC",
-    "dataText": "#86EFAC",
-    "mutedText": "#CBD5E1"
-  },
-  "style": {
-    "roughness": 0,
-    "strokeWidth": {
-      "structural": 1,
-      "standard": 2,
-      "emphasis": 3
-    },
-    "fillStyle": "solid",
-    "opacity": 100,
-    "fontFamily": 3
+  "black": "#1e1e1e",
+  "white": "#ffffff",
+  "background": "#ffffff",
+  "exportBackground": true,
+  "hues": {
+    "gray": ["#f8f9fa", "#e9ecef", "#ced4da", "#868e96", "#343a40"],
+    "red": ["#fff5f5", "#ffc9c9", "#ff8787", "#fa5252", "#e03131"],
+    "pink": ["#fff0f6", "#fcc2d7", "#f783ac", "#e64980", "#c2255c"],
+    "grape": ["#f8f0fc", "#eebefa", "#da77f2", "#be4bdb", "#9c36b5"],
+    "violet": ["#f3f0ff", "#d0bfff", "#9775fa", "#7950f2", "#6741d9"],
+    "blue": ["#e7f5ff", "#a5d8ff", "#4dabf7", "#228be6", "#1971c2"],
+    "cyan": ["#e3fafc", "#99e9f2", "#3bc9db", "#15aabf", "#0c8599"],
+    "teal": ["#e6fcf5", "#96f2d7", "#38d9a9", "#12b886", "#099268"],
+    "green": ["#ebfbee", "#b2f2bb", "#69db7c", "#40c057", "#2f9e44"],
+    "yellow": ["#fff9db", "#ffec99", "#ffd43b", "#fab005", "#f08c00"],
+    "orange": ["#fff4e6", "#ffd8a8", "#ffa94d", "#fd7e14", "#e8590c"],
+    "bronze": ["#f8f1ee", "#eaddd7", "#d2bab0", "#a18072", "#846358"]
   }
 }

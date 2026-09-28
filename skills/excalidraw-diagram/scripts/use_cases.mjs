@@ -78,9 +78,9 @@ function normalizeLinks(items, actors, cases) {
   });
 }
 
-export function normalizeSpec(spec) {
+export function normalizeSpec(spec, { theme } = {}) {
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) throw new SpecError("spec must be an object");
-  const style = resolveStyle(spec.style);
+  const style = resolveStyle(spec.style, {}, theme);
   const actors = normalizeActors(spec.actors);
   const journeys = normalizeZones(spec.journeys, style, { field: "journeys", noun: "journey", labelFromId: true });
   const cases = normalizeCases(spec.cases, journeys, actors, style);
@@ -226,8 +226,8 @@ const labelFontSize = (style) => style.fontSize - 2;
 const ASSOCIATION = { strokeStyle: "solid", start: null, end: null };
 const DEPENDENCY = { strokeStyle: "dashed", start: null, end: "arrow" };
 
-export async function buildUseCases(spec) {
-  const graph = normalizeSpec(spec);
+export async function buildUseCases(spec, options = {}) {
+  const graph = normalizeSpec(spec, options);
   const { style } = graph;
   const layout = await layoutGraph(layoutInput(graph));
 

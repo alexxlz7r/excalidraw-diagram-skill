@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
 import { buildArchitecture, SpecError } from "../architecture.mjs";
-import { PALETTE, rebindScene } from "../scene.mjs";
+import { rebindScene } from "../scene.mjs";
+import { DEFAULT_THEME } from "../theme.mjs";
 
 function byId(scene) {
   return new Map(scene.elements.map((element) => [element.id, element]));
@@ -139,12 +140,12 @@ test("the kind of a link sets its dash, both sets two arrowheads, and tone color
     const { strokeStyle, strokeColor, startArrowhead, endArrowhead } = elements.get(id);
     return { strokeStyle, strokeColor, startArrowhead, endArrowhead };
   });
-  const ink = PALETTE.black;
+  const ink = DEFAULT_THEME.black;
   assert.deepEqual(looks(byId(await buildArchitecture({ ...spec, style: "clean" }))), [
     { strokeStyle: "solid", strokeColor: ink, startArrowhead: null, endArrowhead: "arrow" },
     { strokeStyle: "dashed", strokeColor: ink, startArrowhead: null, endArrowhead: "arrow" },
     { strokeStyle: "dotted", strokeColor: ink, startArrowhead: null, endArrowhead: "arrow" },
-    { strokeStyle: "solid", strokeColor: PALETTE.shades.red[4], startArrowhead: "arrow", endArrowhead: "arrow" },
+    { strokeStyle: "solid", strokeColor: DEFAULT_THEME.hues.red[4], startArrowhead: "arrow", endArrowhead: "arrow" },
   ]);
   const sketch = looks(byId(await buildArchitecture({ ...spec, style: "sketch" })));
   assert.equal(sketch[3].strokeColor, ink, "sketch has no colors");
@@ -165,14 +166,14 @@ test("a role gives its components one hue in clean; sketch draws them in ink", a
   };
   const clean = byId(await buildArchitecture(spec));
   const colors = (id) => [clean.get(id).backgroundColor, clean.get(id).strokeColor];
-  assert.deepEqual(colors("web"), [PALETTE.shades.orange[0], PALETTE.shades.orange[4]]);
+  assert.deepEqual(colors("web"), [DEFAULT_THEME.hues.orange[0], DEFAULT_THEME.hues.orange[4]]);
   assert.deepEqual(colors("api"), colors("web"));
-  assert.deepEqual(colors("db-top"), [PALETTE.shades.yellow[0], PALETTE.shades.yellow[4]]);
-  assert.deepEqual(colors("cdn"), [PALETTE.shades.cyan[0], PALETTE.shades.cyan[4]], "a tone overrides the role");
-  assert.deepEqual(colors("plain"), [PALETTE.shades.gray[0], PALETTE.shades.gray[4]]);
+  assert.deepEqual(colors("db-top"), [DEFAULT_THEME.hues.yellow[0], DEFAULT_THEME.hues.yellow[4]]);
+  assert.deepEqual(colors("cdn"), [DEFAULT_THEME.hues.cyan[0], DEFAULT_THEME.hues.cyan[4]], "a tone overrides the role");
+  assert.deepEqual(colors("plain"), [DEFAULT_THEME.hues.gray[0], DEFAULT_THEME.hues.gray[4]]);
 
   const sketch = byId(await buildArchitecture({ ...spec, style: "sketch" }));
-  assert.deepEqual([sketch.get("web").backgroundColor, sketch.get("web").strokeColor], [PALETTE.white, PALETTE.black]);
+  assert.deepEqual([sketch.get("web").backgroundColor, sketch.get("web").strokeColor], [DEFAULT_THEME.white, DEFAULT_THEME.black]);
 
   await assert.rejects(buildArchitecture({ ...spec, components: [{ id: "x", role: "cache" }] }),
     (error) => error instanceof SpecError && /components\[0\]: unknown role "cache"/.test(error.message));
@@ -216,7 +217,7 @@ test("zones nest, hold their components, and take links on their outline", async
   assert.ok(!overlaps(lab, shared));
   assert.equal(client.fillStyle, "hachure");
   assert.equal(lab.fillStyle, "cross-hatch");
-  assert.equal(lab.backgroundColor, PALETTE.shades.blue[1]);
+  assert.equal(lab.backgroundColor, DEFAULT_THEME.hues.blue[1]);
   for (const [id, zone] of [["shell", lab], ["episodes", lab], ["api", shared]]) {
     assert.ok(inside(elements.get(id), zone), `${zone.id} holds ${id}`);
   }
@@ -352,7 +353,7 @@ test("the legend explains roles and link kinds by itself, or lists the items of 
   const auto = await buildArchitecture(spec);
   assert.deepEqual(legend(auto), ["application", "storage", "call", "async"]);
   const elements = byId(auto);
-  assert.equal(elements.get("legend-0-swatch").backgroundColor, PALETTE.shades.orange[0]);
+  assert.equal(elements.get("legend-0-swatch").backgroundColor, DEFAULT_THEME.hues.orange[0]);
   assert.equal(elements.get("legend-3-line").strokeStyle, "dashed");
   assert.equal(auto.elements.at(-1).id, "footnote");
 

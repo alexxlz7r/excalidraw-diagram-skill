@@ -68,16 +68,13 @@ most capable model with a brief instead of a fork.
      [references/styles.md](references/styles.md): `clean` (smooth, colored)
      or `sketch` (hand-drawn, ink only). Use the style that the user names. If
      the user names no style, use `clean`. Do not ask the user to choose.
-   - For a style brief, visual reference, or known presentation, document, site,
-     or brand system, read
-     [references/theme-adaptation.md](references/theme-adaptation.md) and inspect
-     the supplied material.
-   - For standalone work, use
-     [references/default-theme.md](references/default-theme.md) for values left
-     unspecified by the request. During edits, retain unspecified styling from
-     the existing scene; in a host artifact, inherit it from the host.
-   Validate any resolved theme sidecar with `scripts/validate_theme.mjs` before
-   applying it.
+   - Take every color from one theme, as
+     [references/theme.md](references/theme.md) tells. For standalone work,
+     use the default theme: the Excalidraw palette. For a style brief, a visual
+     reference, or a known presentation, document, site, or brand system,
+     inspect the supplied material and write a theme file. Give the same theme
+     to the generators (`--theme`) and to a hand-built scene. During edits,
+     retain unspecified styling from the existing scene.
 3. For visual patterns, evidence artifacts, hierarchy, layout, and the quality
    bar, read [references/design-guidance.md](references/design-guidance.md).
 4. For application design diagrams involving classes, interfaces, or abstract
@@ -101,10 +98,9 @@ most capable model with a brief instead of a fork.
    [references/element-templates.md](references/element-templates.md) when
    concrete element shapes or bindings are useful.
 
-Installed skill files are immutable inputs. Apply resolved theme values only
-to the working scene. For a multi-diagram artifact, an artifact-local temporary
-`diagram-theme.json` may preserve consistency; do not place it in this skill or
-deliver it unless it is useful to the user.
+Installed skill files are immutable inputs. Keep a theme file beside the
+working artifact or in a temporary directory, never in this skill. Deliver it
+only if it is useful to the user.
 
 ## Design Workflow
 
@@ -139,8 +135,8 @@ of repeating uniform cards.
 
 Use descriptive unique IDs and stable seeds. In a large scene, work by coherent
 visual sections so each edit remains reviewable; update both sides of bindings
-when adding cross-section arrows. Keep all resolved theme values consistent
-across the scene. Choose the intended viewing width before assigning dimensions,
+when adding cross-section arrows. Take every color from the theme, with the
+shade levels in `references/theme.md`. Choose the intended viewing width before assigning dimensions,
 then fit containers to their wrapped text using the scale and density rules in
 `references/design-guidance.md`. When generating scene JSON with code, import
 `textWidth`, `textHeight`, or `boxFor` from `scripts/layout.mjs` instead of
@@ -208,7 +204,7 @@ applicable check.
 
 Confirm that the exporter completed embedded-scene verification. Deliver only
 the editable image requested by the user, then remove the working scene and any
-temporary theme sidecar created for the task. Preserve user-provided source
+temporary theme file created for the task. Preserve user-provided source
 files, and retain or deliver working JSON only when the user explicitly asks.
 
 ## Self-update

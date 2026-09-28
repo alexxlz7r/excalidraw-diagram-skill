@@ -25,6 +25,9 @@ boundaries, such as a system, a workspace, a scope, or a deployment unit.
    node scripts/architecture.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
+   To use a theme other than the default, add `--theme <file>`. See
+   [theme.md](theme.md#use-the-theme).
+
 6. If the script prints a width warning, break long names and sub lines into
    lines, or split the diagram.
 7. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
@@ -83,10 +86,9 @@ not wrap text: break long names and sub lines into lines in the spec.
 | `footnote` | none | Text below the legend. |
 
 `style` object fields: `preset`, `fontSize` (20), `fontFamily`, the name font,
-`codeFontFamily`, the font of the sub lines, `roughness`, `background`, `ink`,
-and `tone` (`gray`), the default tone of zones and of components without a
-role. See [type-map-spec.md](type-map-spec.md#top-level) for the values of
-each preset.
+`codeFontFamily`, the font of the sub lines, `roughness`, and `tone` (`gray`),
+the default tone of zones and of components without a role. See
+[type-map-spec.md](type-map-spec.md#top-level) for the values of each preset.
 
 ### Component
 

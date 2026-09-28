@@ -20,6 +20,9 @@ and activation bars.
    node scripts/sequence.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
+   To use a theme other than the default, add `--theme <file>`. See
+   [theme.md](theme.md#use-the-theme).
+
 4. If the script prints a width warning, break long labels and names into
    lines, then generate again.
 5. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
@@ -82,11 +85,10 @@ not wrap text: break long labels and names into lines in the spec.
 | `legend` | none | Legend items below the diagram. |
 | `footnote` | none | Text below the legend. |
 
-`style` object fields: `preset`, `fontSize` (20), `fontFamily`, the label
-font, `codeFontFamily`, the font of message labels and module lines,
-`roughness`, `background`, `ink`, and `tone` (`gray`), the default tone of
-participants. See [type-map-spec.md](type-map-spec.md#top-level) for the
-values of each preset.
+`style` object fields: `preset`, `fontSize` (20), `fontFamily`, the label font,
+`codeFontFamily`, the font of message labels and module lines, `roughness`, and
+`tone` (`gray`), the default tone of participants. See
+[type-map-spec.md](type-map-spec.md#top-level) for the values of each preset.
 
 Legend items have a `label` and one marker: `{ message: "call" }` or
 `{ message: "reply" }` for an arrow sample, or `{ tone }` for an operand tint.

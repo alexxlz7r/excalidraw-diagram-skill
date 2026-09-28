@@ -4,9 +4,8 @@ The skill has two named styles: `clean` and `sketch`. The user selects one
 when the user asks for a diagram. If the request names no style, use `clean`.
 
 A named style sets the typography, roughness, corners, fills, and zones. The
-theme ([default-theme.md](default-theme.md) or a resolved theme) sets the
-colors. The style overrides `style.roughness` and `style.fontFamily` of the
-theme. Apply one style to the whole diagram, in every diagram mode.
+theme sets the colors (see [theme.md](theme.md)). Apply one style to the whole
+diagram, in every diagram mode.
 
 For a diagram from a generator, pass the style name in the spec:
 `"style": "clean"` or `"style": "sketch"`. See the top-level fields in
@@ -26,7 +25,7 @@ A smooth, colored diagram for documents and slides.
 | Label font | `fontFamily: 6` (Nunito): titles, names, labels, and prose |
 | Code font | `fontFamily: 3` (Cascadia): class members, identifiers in rows, payloads |
 | Box corners | Sharp (`roundness: null`) for type boxes; rounded for zones and plates |
-| Fills | Solid, from the Excalidraw palette. Pale shades for headers, lighter shades below them |
+| Fills | Solid, from the theme hues: level 2 for headers, level 1 below them |
 
 A type box is a stack of rectangles: a header in the kind color, then one
 compartment for the fields and one for the methods, in a lighter shade of the
@@ -42,7 +41,7 @@ Zones are large areas that group other elements, such as `ui` and `backend`:
    the hatch.
 4. Use `hachure` for an outer zone and `cross-hatch` for a nested zone. Deeper
    zones use a solid pale fill.
-5. The hatch color is the zone `backgroundColor`: a pale palette shade. Use
+5. The hatch color is the zone `backgroundColor`: level 2 of its hue. Use
    `strokeWidth: 1` on zones for a fine hatch. Keep the boxes inside a zone
    lighter than the zone, or in its hue.
 
@@ -55,7 +54,7 @@ A hand-drawn, ink-only diagram for whiteboard explanations.
 | Roughness | `1` |
 | Font | `fontFamily: 5` (Excalifont) for all text |
 | Box corners | Rounded (`roundness: { "type": 3 }`) |
-| Fills | None: white inside boxes, transparent zones. Strokes in ink `#1e1e1e` |
+| Fills | None: theme `white` inside boxes, transparent zones. Strokes in theme `black` |
 
 A type box is one rounded outline. Horizontal rules divide the header, the
 fields, and the methods. Zones have a dashed ink outline and a plain title. A

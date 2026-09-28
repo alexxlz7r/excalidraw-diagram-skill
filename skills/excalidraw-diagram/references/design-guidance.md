@@ -76,6 +76,20 @@ space when it represents an entity, groups content, encodes meaning, or anchors
 a connection. As a diagnostic, inspect any scene where most text is boxed: the
 visual argument may have collapsed into cards.
 
+Do not let color carry a meaning alone. Pair every color distinction with a
+second cue, so the meaning stays in grayscale and for readers with a color
+vision deficiency:
+
+| Meaning | Cue beside the color |
+| --- | --- |
+| Start or entry | Ellipse or entry marker |
+| Success or end | End marker or a check label |
+| Warning | Warning label or icon |
+| Decision | Diamond |
+| AI or model step | Explicit AI label |
+| Error or failure | Error label, strong outline, or dashed path |
+| Inactive or external | Dashed outline |
+
 ## Composition
 
 - Prefer one dominant flow: left-to-right or top-to-bottom for sequences,

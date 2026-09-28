@@ -5,28 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MEASURED_FONT_FAMILIES, PIXEL_ADVANCE_FAMILIES, textHeight, textWidth } from "./layout.mjs";
+import { DEFAULT_THEME, loadTheme } from "./theme.mjs";
 
 export class SpecError extends Error {}
-
-// Excalidraw 0.18.1 COLOR_PALETTE: open-color indexes 0, 2, 4, 6, 8 per hue.
-export const PALETTE = {
-  black: "#1e1e1e",
-  white: "#ffffff",
-  shades: {
-    gray: ["#f8f9fa", "#e9ecef", "#ced4da", "#868e96", "#343a40"],
-    red: ["#fff5f5", "#ffc9c9", "#ff8787", "#fa5252", "#e03131"],
-    pink: ["#fff0f6", "#fcc2d7", "#f783ac", "#e64980", "#c2255c"],
-    grape: ["#f8f0fc", "#eebefa", "#da77f2", "#be4bdb", "#9c36b5"],
-    violet: ["#f3f0ff", "#d0bfff", "#9775fa", "#7950f2", "#6741d9"],
-    blue: ["#e7f5ff", "#a5d8ff", "#4dabf7", "#228be6", "#1971c2"],
-    cyan: ["#e3fafc", "#99e9f2", "#3bc9db", "#15aabf", "#0c8599"],
-    teal: ["#e6fcf5", "#96f2d7", "#38d9a9", "#12b886", "#099268"],
-    green: ["#ebfbee", "#b2f2bb", "#69db7c", "#40c057", "#2f9e44"],
-    yellow: ["#fff9db", "#ffec99", "#ffd43b", "#fab005", "#f08c00"],
-    orange: ["#fff4e6", "#ffd8a8", "#ffa94d", "#fd7e14", "#e8590c"],
-    bronze: ["#f8f1ee", "#eaddd7", "#d2bab0", "#a18072", "#846358"],
-  },
-};
 
 // Named styles. `clean` is smooth and colored; `sketch` draws rough ink
 // outlines without color.
@@ -38,8 +19,6 @@ const DEFAULT_PRESET = "clean";
 
 const DEFAULT_STYLE = {
   fontSize: 20,
-  background: PALETTE.white,
-  ink: PALETTE.black,
   tone: "gray",
   highlight: "yellow",
 };
@@ -57,36 +36,43 @@ export function endSegment(arrowhead) {
   return arrowhead?.startsWith("diamond") ? DIAMOND_SEGMENT : END_SEGMENT;
 }
 
-export function shade(tone, level) {
-  const shades = PALETTE.shades[tone];
-  if (!shades) throw new SpecError(`Unknown tone "${tone}"`);
-  return shades[level - 1];
+// A shade of a theme hue: level 1 is the palest, level 5 the strongest.
+export function shade(style, tone, level) {
+  if (!Object.hasOwn(style.theme.hues, tone)) throw new SpecError(`Unknown tone "${tone}"`);
+  return style.theme.hues[tone][level - 1];
 }
 
 // Fills and strokes of a tone. The sketch style has no colors: white and ink.
 export function fillOf(style, tone, level) {
-  return style.preset === "sketch" ? PALETTE.white : shade(tone, level);
+  return style.preset === "sketch" ? style.theme.white : shade(style, tone, level);
 }
 
 export function strokeOf(style, tone, level) {
-  return style.preset === "sketch" ? style.ink : shade(tone, level);
+  return style.preset === "sketch" ? style.ink : shade(style, tone, level);
 }
 
 // A highlighted row: a stronger fill of its hue, or a gray hatch in sketch.
 export function highlightFill(style, hue, level) {
   return style.preset === "sketch"
-    ? { backgroundColor: shade("gray", 4), fillStyle: "hachure" }
-    : { backgroundColor: shade(hue, level) };
+    ? { backgroundColor: shade(style, "gray", 4), fillStyle: "hachure" }
+    : { backgroundColor: shade(style, hue, level) };
 }
 
 // `value` is a preset name, or an object with an optional `preset` and fields
 // that override it. `extension` adds the fields of one generator: `defaults`
-// for every preset and `presets` per preset name.
-export function resolveStyle(value, extension = {}) {
+// for every preset and `presets` per preset name. The colors come from `theme`:
+// `ink` is its black and `background` its background.
+export function resolveStyle(value, extension = {}, theme = DEFAULT_THEME) {
   const fields = typeof value === "string" ? { preset: value } : value ?? {};
   if (typeof fields !== "object" || Array.isArray(fields)) {
     throw new SpecError("style must be a preset name or an object");
   }
+  for (const [key, field] of [["ink", "black"], ["background", "background"]]) {
+    if (Object.hasOwn(fields, key)) {
+      throw new SpecError(`style.${key} is a theme color: set "${field}" in a theme file and pass it with --theme`);
+    }
+  }
+  if (Object.hasOwn(fields, "theme")) throw new SpecError("style.theme is not a style field: pass a theme file with --theme");
   const preset = fields.preset ?? DEFAULT_PRESET;
   if (!Object.hasOwn(STYLE_PRESETS, preset)) {
     throw new SpecError(`style must be "clean" or "sketch", not "${preset}"`);
@@ -98,13 +84,16 @@ export function resolveStyle(value, extension = {}) {
     ...extension.presets?.[preset],
     ...fields,
     preset,
+    theme,
+    ink: theme.black,
+    background: theme.background,
   };
   for (const key of ["fontFamily", "codeFontFamily"]) {
     if (!MEASURED_FONT_FAMILIES.includes(style[key])) {
       throw new SpecError(`style.${key} must be one of ${MEASURED_FONT_FAMILIES.join(", ")}`);
     }
   }
-  shade(style.tone, 1);
+  shade(style, style.tone, 1);
   if (![0, 1, 2].includes(style.roughness)) throw new SpecError("style.roughness must be 0, 1, or 2");
   return style;
 }
@@ -546,7 +535,7 @@ export function normalizeZones(items, style, { field, noun, labelFromId = false 
     const id = requireId(item?.id, `${where}.id`);
     if (zones.has(id)) throw new SpecError(`duplicate ${noun} "${id}"`);
     const tone = item.tone ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     const label = textOf(item.label ?? (labelFromId ? id : undefined), `${where}.label`);
     zones.set(id, { id, where, label, tone, parent: item.parent ?? null });
   }
@@ -575,7 +564,7 @@ export function drawZone(builder, id, box, { label, tone, depth = 0, plate = fal
   const hatched = fillStyle !== "solid";
   const zone = builder.base(id, "rectangle", box.x, box.y, box.width, box.height, {
     strokeColor: strokeOf(style, tone, 4),
-    backgroundColor: sketch ? "transparent" : shade(tone, hatched ? 2 : 1),
+    backgroundColor: sketch ? "transparent" : shade(style, tone, hatched ? 2 : 1),
     fillStyle,
     strokeWidth: 1,
     strokeStyle: sketch ? "dashed" : "solid",
@@ -587,8 +576,8 @@ export function drawZone(builder, id, box, { label, tone, depth = 0, plate = fal
   if (hatched || plate) {
     const size = measure(label, style.fontSize, style);
     builder.base(`${id}-plate`, "rectangle", labelX - 10, labelY - 4, size.width + 20, size.height + 8, {
-      strokeColor: sketch ? "transparent" : shade(tone, 4),
-      backgroundColor: hatched ? PALETTE.white : style.background,
+      strokeColor: sketch ? "transparent" : shade(style, tone, 4),
+      backgroundColor: hatched ? style.theme.white : style.background,
       strokeWidth: 1,
       roundness: { type: 3 },
     });
@@ -712,7 +701,7 @@ export function sceneDocument(elements, style) {
     elements,
     appState: {
       viewBackgroundColor: style.background,
-      exportBackground: true,
+      exportBackground: style.theme.exportBackground,
       gridSize: null,
     },
     files: {},
@@ -722,12 +711,16 @@ export function sceneDocument(elements, style) {
 function parseArguments(argv) {
   let input = null;
   let output = null;
+  let theme = null;
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (["-h", "--help"].includes(argument)) return { help: true };
     if (["-o", "--output"].includes(argument)) {
       output = argv[++index];
       if (output === undefined) throw new SpecError(`Missing value for ${argument}`);
+    } else if (argument === "--theme") {
+      theme = argv[++index];
+      if (theme === undefined) throw new SpecError(`Missing value for ${argument}`);
     } else if (argument.startsWith("-")) {
       throw new SpecError(`Unknown option: ${argument}`);
     } else if (input === null) {
@@ -741,12 +734,13 @@ function parseArguments(argv) {
     help: false,
     input,
     output: output ?? input.replace(/(\.json)?$/i, ".excalidraw"),
+    theme,
   };
 }
 
 // Run a generator from the command line when `moduleUrl` is the entry point:
-// read the JSON spec, build the scene, write it, and print its path and size.
-// A scene wider than `widthLimit` gets a warning.
+// read the JSON spec and the theme, build the scene, write it, and print its
+// path and size. A scene wider than `widthLimit` gets a warning.
 export async function runGenerator(moduleUrl, { usage, build, widthLimit = Infinity }) {
   if (path.resolve(process.argv[1] ?? "") !== path.resolve(fileURLToPath(moduleUrl))) return;
   try {
@@ -762,7 +756,8 @@ export async function runGenerator(moduleUrl, { usage, build, widthLimit = Infin
       if (error instanceof SyntaxError) throw new SpecError(`Invalid JSON in ${parsed.input}: ${error.message}`);
       throw error;
     }
-    const scene = await build(spec);
+    const theme = await loadTheme(parsed.theme);
+    const scene = await build(spec, { theme });
     await writeFile(parsed.output, `${JSON.stringify(scene, null, 2)}\n`);
     const box = bounds(scene.elements);
     console.log(`${path.resolve(parsed.output)} (${Math.ceil(box.width)} × ${Math.ceil(box.height)} px)`);

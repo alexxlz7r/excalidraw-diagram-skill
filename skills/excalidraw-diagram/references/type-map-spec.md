@@ -21,6 +21,9 @@ hand.
    node scripts/type_map.mjs /tmp/spec.json -o /tmp/scene.excalidraw
    ```
 
+   To use a theme other than the default, add `--theme <file>`. See
+   [theme.md](theme.md#use-the-theme).
+
 4. Export and inspect the scene with `scripts/export_excalidraw.mjs`.
 5. If the preview fails a check, change the spec and generate again. Change
    composition through the spec: direction, groups, `layer`, `place`, member
@@ -75,12 +78,12 @@ an array of lines.
 `style` object fields: `preset` (`clean` or `sketch`), `fontSize` (20),
 `fontFamily`, the label font (`clean`: 6, Nunito; `sketch`: 5, Excalifont),
 `codeFontFamily`, the member font (`clean`: 3, Cascadia; `sketch`: 5),
-`roughness` (`clean`: 0; `sketch`: 1), `background` (`#ffffff`), `ink`
-(`#1e1e1e`), `tone` (`gray`), the default tone of groups and structs,
-`kindTones`, the default tone per kind (`clean`: class `orange`, interface
-`blue`, abstract `violet`), `memberCells` (`auto`: cells for structs, a plain
-list for other kinds; or `true` or `false` for all types), and `highlight`
-(`yellow`), the highlight hue for types without their own tone. A font family
+`roughness` (`clean`: 0; `sketch`: 1), `tone` (`gray`), the default tone of
+groups and structs, `kindTones`, the default tone per kind (`clean`: class
+`orange`, interface `blue`, abstract `violet`), `memberCells` (`auto`: cells
+for structs, a plain list for other kinds; or `true` or `false` for all
+types), and `highlight` (`yellow`), the highlight hue for types without their
+own tone. The style holds no colors: the theme sets them. A font family
 must have measured widths: 1, 3, 5, 6, 7, 8, or 9. To use Comic Shanns as the
 label font, set `"style": { "preset": "clean", "fontFamily": 8 }`. See
 [styles.md](styles.md#comic-shanns).
@@ -158,13 +161,14 @@ type with several pointers share the next layer and are entered from above.
 
 ## Palette
 
-Tones are the Excalidraw color picker hues: `gray`, `red`, `pink`, `grape`,
-`violet`, `blue`, `cyan`, `teal`, `green`, `yellow`, `orange`, and `bronze`.
-Each hue has the five picker shades. In `clean`, the generator uses the
-second shade for type headers and zone hatches, the lightest shade for
-compartments and nested zones, and the darker shades for connector and zone
-strokes. Text always uses the ink color. `sketch` uses no tones: every stroke
-is ink, and a `tone` legend item is an error.
+A tone is a hue of the theme: one of the twelve Excalidraw hues, `gray`,
+`red`, `pink`, `grape`, `violet`, `blue`, `cyan`, `teal`, `green`, `yellow`,
+`orange`, and `bronze`, or a hue that the theme adds. Each hue has five
+shades. In `clean`, the generator uses level 2 for type headers and zone
+hatches, level 1 for compartments and nested zones, and levels 4 and 5 for
+zone and connector strokes (see [theme.md](theme.md#shade-levels)). Text
+always uses the theme `black`. `sketch` uses no tones: every stroke is ink,
+and a `tone` legend item is an error.
 
 In `clean`, the header color shows the kind: orange classes, blue
 interfaces, violet abstract classes. To show a role instead, such as the

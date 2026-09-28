@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
-import { buildTypeMap, PALETTE, SpecError } from "../type_map.mjs";
+import { DEFAULT_THEME } from "../theme.mjs";
+import { buildTypeMap, SpecError } from "../type_map.mjs";
 import { textWidth } from "../layout.mjs";
 
 const dipSpec = {
@@ -193,12 +194,6 @@ test("invalid specs report the offending reference", async () => {
   );
 });
 
-test("palette matches Excalidraw picker shades", () => {
-  assert.equal(PALETTE.black, "#1e1e1e");
-  assert.deepEqual(PALETTE.shades.green, ["#ebfbee", "#b2f2bb", "#69db7c", "#40c057", "#2f9e44"]);
-  for (const shades of Object.values(PALETTE.shades)) assert.equal(shades.length, 5);
-});
-
 test("groups are at least as wide as their labels in every direction", async () => {
   const label = "a long group label that is wider than its only type";
   for (const direction of ["DOWN", "UP", "RIGHT", "LEFT"]) {
@@ -228,9 +223,9 @@ test("structs render as records and highlights default to the type tone", async 
   const header = elements.get("file-header");
   assert.equal(header.x, file.x, "record title bar spans the full width");
   assert.equal(header.width, file.width);
-  assert.equal(header.backgroundColor, PALETTE.shades.violet[1]);
-  assert.equal(elements.get("file-member-0-cell").backgroundColor, PALETTE.shades.violet[2]);
-  assert.equal(elements.get("plain-member-0-highlight").backgroundColor, PALETTE.shades.yellow[1]);
+  assert.equal(header.backgroundColor, DEFAULT_THEME.hues.violet[1]);
+  assert.equal(elements.get("file-member-0-cell").backgroundColor, DEFAULT_THEME.hues.violet[2]);
+  assert.equal(elements.get("plain-member-0-highlight").backgroundColor, DEFAULT_THEME.hues.yellow[1]);
   assert.notEqual(elements.get("legend-0-swatch").backgroundColor, elements.get("legend-1-swatch").backgroundColor);
 });
 
@@ -461,9 +456,9 @@ test("clean draws a class as stacked compartments: header, fields, methods", asy
   const header = elements.get("SqlOrderRepository-header");
   const fields = elements.get("SqlOrderRepository-fields");
   const methods = elements.get("SqlOrderRepository-methods");
-  assert.equal(header.backgroundColor, PALETTE.shades.orange[1], "a class header is orange");
-  assert.equal(elements.get("OrderRepository-header").backgroundColor, PALETTE.shades.blue[1], "an interface header is blue");
-  assert.equal(fields.backgroundColor, PALETTE.shades.orange[0]);
+  assert.equal(header.backgroundColor, DEFAULT_THEME.hues.orange[1], "a class header is orange");
+  assert.equal(elements.get("OrderRepository-header").backgroundColor, DEFAULT_THEME.hues.blue[1], "an interface header is blue");
+  assert.equal(fields.backgroundColor, DEFAULT_THEME.hues.orange[0]);
   assert.equal(header.y + header.height, fields.y);
   assert.equal(fields.y + fields.height, methods.y);
   const inside = (text, box) => text.y >= box.y && text.y + text.height <= box.y + box.height;
@@ -482,8 +477,8 @@ test("sketch draws a class as one rounded box divided by rules, without color", 
   assert.equal(rules("SqlOrderRepository").length, 2, "rules under the header and under the fields");
   assert.equal(rules("OrderRepository").length, 1);
   for (const element of scene.elements) {
-    assert.ok(["transparent", PALETTE.white].includes(element.backgroundColor), `${element.id} has no color fill`);
-    if (element.type !== "text") assert.equal(element.strokeColor, PALETTE.black, `${element.id} is drawn in ink`);
+    assert.ok(["transparent", DEFAULT_THEME.white].includes(element.backgroundColor), `${element.id} has no color fill`);
+    if (element.type !== "text") assert.equal(element.strokeColor, DEFAULT_THEME.black, `${element.id} is drawn in ink`);
   }
 });
 
@@ -492,7 +487,7 @@ test("clean zones hatch below their types, with the title on a solid plate", asy
   const elements = byId(scene);
   const order = new Map(scene.elements.map((element, index) => [element.id, index]));
   assert.equal(elements.get("group-backend").fillStyle, "hachure");
-  assert.equal(elements.get("group-backend").backgroundColor, PALETTE.shades.blue[1]);
+  assert.equal(elements.get("group-backend").backgroundColor, DEFAULT_THEME.hues.blue[1]);
   assert.equal(elements.get("group-data").fillStyle, "cross-hatch");
   assert.equal(elements.get("group-rows").fillStyle, "solid");
   assert.ok(order.get("group-backend") < order.get("OrderRepository"));

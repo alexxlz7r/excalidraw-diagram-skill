@@ -59,7 +59,7 @@ function normalizeNodes(items, groups, style) {
     const kind = item.kind ?? "step";
     if (!KINDS.has(kind)) throw new SpecError(`${where}.kind must be one of ${[...KINDS].join(", ")}`);
     const tone = item.tone ?? style.kindTones[kind] ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     const group = item.group ?? null;
     if (group !== null && !groups.has(group)) throw new SpecError(`${where}: unknown group "${group}"`);
     nodes.set(id, {
@@ -116,9 +116,9 @@ function normalizeLegend(items, style) {
   });
 }
 
-export function normalizeSpec(spec) {
+export function normalizeSpec(spec, { theme } = {}) {
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) throw new SpecError("spec must be an object");
-  const style = resolveStyle(spec.style, STYLE_EXTENSION);
+  const style = resolveStyle(spec.style, STYLE_EXTENSION, theme);
   const direction = spec.direction ?? "DOWN";
   if (!DIRECTIONS.has(direction)) throw new SpecError(`direction must be one of ${[...DIRECTIONS].join(", ")}`);
   const groups = normalizeZones(spec.groups, style, { field: "groups", noun: "group" });
@@ -244,8 +244,8 @@ function pathLook(style, path) {
   };
 }
 
-export async function buildFlow(spec) {
-  const graph = normalizeSpec(spec);
+export async function buildFlow(spec, options = {}) {
+  const graph = normalizeSpec(spec, options);
   const { style } = graph;
   const layout = await layoutGraph(layoutInput(graph));
 

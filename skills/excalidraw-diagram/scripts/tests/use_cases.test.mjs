@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
-import { PALETTE, rebindScene } from "../scene.mjs";
+import { rebindScene } from "../scene.mjs";
+import { DEFAULT_THEME } from "../theme.mjs";
 import { buildUseCases, SpecError } from "../use_cases.mjs";
 
 function byId(scene) {
@@ -141,18 +142,18 @@ test("journeys group use cases inside the system and give them a hue; primary it
   for (const id of ["system", "journey-buy", "journey-care"]) {
     assert.ok(order.get(`${id}-label`) > lastLink, `the label of ${id} is drawn over the links`);
   }
-  assert.equal(elements.get("pay").strokeColor, PALETTE.shades.blue[4]);
-  assert.equal(elements.get("pay").backgroundColor, PALETTE.shades.blue[0]);
-  assert.equal(elements.get("refund").strokeColor, PALETTE.shades.green[4]);
+  assert.equal(elements.get("pay").strokeColor, DEFAULT_THEME.hues.blue[4]);
+  assert.equal(elements.get("pay").backgroundColor, DEFAULT_THEME.hues.blue[0]);
+  assert.equal(elements.get("refund").strokeColor, DEFAULT_THEME.hues.green[4]);
 
   assert.equal(elements.get("checkout").strokeWidth, 3, "a primary use case has a strong outline");
-  assert.equal(elements.get("checkout").backgroundColor, PALETTE.shades.blue[1], "and a stronger fill");
+  assert.equal(elements.get("checkout").backgroundColor, DEFAULT_THEME.hues.blue[1], "and a stronger fill");
   assert.equal(elements.get("pay").strokeWidth, 2);
   assert.equal(elements.get("customer-body").strokeWidth, 3, "the primary actor is drawn stronger");
   assert.equal(elements.get("support-body").strokeWidth, 2);
 
   const sketch = byId(await buildUseCases({ ...shop, style: "sketch" }));
-  assert.deepEqual([sketch.get("pay").strokeColor, sketch.get("pay").backgroundColor], [PALETTE.black, PALETTE.white]);
+  assert.deepEqual([sketch.get("pay").strokeColor, sketch.get("pay").backgroundColor], [DEFAULT_THEME.black, DEFAULT_THEME.white]);
   assert.equal(sketch.get("checkout").strokeWidth, 3, "sketch keeps the primary outline");
 });
 

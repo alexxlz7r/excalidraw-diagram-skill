@@ -20,7 +20,6 @@ import {
   LINE_HEIGHT,
   loadElk,
   measure,
-  PALETTE,
   requireId,
   resolveStyle,
   runGenerator,
@@ -33,7 +32,7 @@ import {
   translate,
 } from "./scene.mjs";
 
-export { PALETTE, SpecError } from "./scene.mjs";
+export { SpecError } from "./scene.mjs";
 
 const KINDS = {
   class: { badge: "C" },
@@ -73,13 +72,13 @@ const BOX = { padX: 12, padY: 8, badgeGap: 10 };
 
 const CELL_PADDING = 6;
 
-function normalizeMember(member, where, defaultHighlight) {
+function normalizeMember(member, where, defaultHighlight, style) {
   if (typeof member === "string" || Array.isArray(member)) {
     return { id: null, text: textOf(member, where), highlight: null };
   }
   if (member && member.text !== undefined) {
     const highlight = member.highlight === true ? defaultHighlight : member.highlight ?? null;
-    if (highlight !== null) shade(highlight, 1);
+    if (highlight !== null) shade(style, highlight, 1);
     return { id: member.id ?? null, text: textOf(member.text, `${where}.text`), highlight };
   }
   throw new SpecError(`${where} must be a string, an array of strings, or { text }`);
@@ -114,7 +113,7 @@ function normalizeGraph(graph, style, label) {
     const id = requireId(group?.id, `${label}.groups[${index}].id`);
     if (groups.has(id)) throw new SpecError(`${label}: duplicate group "${id}"`);
     const tone = group.tone ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     groups.set(id, {
       id,
       label: textOf(group.label, `${label}.groups[${index}].label`),
@@ -144,7 +143,7 @@ function normalizeGraph(graph, style, label) {
       throw new SpecError(`${where}: unknown group "${type.group}"`);
     }
     const tone = type.tone ?? style.kindTones[kind] ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     if (type.layer !== undefined && (!Number.isInteger(type.layer) || type.layer < 0)) {
       throw new SpecError(`${where}: layer must be a non-negative integer`);
     }
@@ -163,6 +162,7 @@ function normalizeGraph(graph, style, label) {
           member,
           `${where}.members[${memberIndex}]`,
           type.tone === undefined || type.tone === style.tone ? style.highlight : type.tone,
+          style,
         )),
       cells,
       group: type.group ?? null,
@@ -184,7 +184,7 @@ function normalizeGraph(graph, style, label) {
     if (!RELATIONS[type]) {
       throw new SpecError(`${where}: unknown relation "${type}"; use ${Object.keys(RELATIONS).join(", ")}`);
     }
-    if (relation.tone !== undefined) shade(relation.tone, 5);
+    if (relation.tone !== undefined) shade(style, relation.tone, 5);
     const fromMember = findMember(from, relation.fromMember, where);
     relations.push({
       id: `${relation.from}-${type}-${relation.to}-${index}`,
@@ -588,7 +588,7 @@ function drawType(builder, type, geometry, layout, prefix) {
   if (geometry.hasHeader) {
     if (!sketch) {
       builder.base(`${prefix}${type.id}-header`, "rectangle", x, y, geometry.width, geometry.headerHeight, {
-        backgroundColor: shade(type.tone, 2),
+        backgroundColor: shade(style, type.tone, 2),
         strokeWidth: 1,
         groupIds,
       });
@@ -597,7 +597,7 @@ function drawType(builder, type, geometry, layout, prefix) {
     if (geometry.hasBadge) {
       const size = geometry.badgeSize;
       const badge = builder.base(`${prefix}${type.id}-badge`, "ellipse", nameX, y + (geometry.headerHeight - size) / 2, size, size, {
-        backgroundColor: PALETTE.white,
+        backgroundColor: style.theme.white,
         strokeWidth: 1,
         groupIds,
       });
@@ -623,7 +623,7 @@ function drawType(builder, type, geometry, layout, prefix) {
       }
     } else {
       builder.base(`${prefix}${type.id}-${part.id}`, "rectangle", x, top, geometry.width, part.height, {
-        backgroundColor: cellHighlight === null ? shade(type.tone, 1) : shade(cellHighlight, 3),
+        backgroundColor: cellHighlight === null ? shade(style, type.tone, 1) : shade(style, cellHighlight, 3),
         strokeWidth: 1,
         groupIds,
       });
@@ -717,7 +717,7 @@ function normalizeLegend(items, style) {
     const label = textOf(item?.label, `${where}.label`);
     if (label === "") throw new SpecError(`${where}.label is required`);
     const tone = item.tone ?? style.kindTones[item.kind] ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     if (item.kind !== undefined) {
       if (!KINDS[item.kind]?.badge) throw new SpecError(`${where}.kind must be class, interface, or abstract`);
       return { marker: "badge", text: KINDS[item.kind].badge, backgroundColor: fillOf(style, tone, 2), label };
@@ -729,23 +729,23 @@ function normalizeLegend(items, style) {
     }
     if (item.highlight !== undefined) {
       const hue = item.highlight === true ? style.highlight : item.highlight;
-      shade(hue, 1);
+      shade(style, hue, 1);
       return { marker: "swatch", fill: { ...highlightFill(style, hue, 2), strokeColor: "transparent" }, label };
     }
     if (item.tone !== undefined) {
       if (style.preset === "sketch") {
         throw new SpecError(`${where}: the sketch style has no colors; remove the tone item or use the clean style`);
       }
-      return { marker: "swatch", fill: { backgroundColor: shade(tone, 2), strokeColor: style.ink }, label };
+      return { marker: "swatch", fill: { backgroundColor: shade(style, tone, 2), strokeColor: style.ink }, label };
     }
     throw new SpecError(`${where} needs kind, relation, highlight, or tone`);
   });
 }
 
-export function normalizeSpec(spec) {
+export function normalizeSpec(spec, { theme } = {}) {
   if (!spec || typeof spec !== "object") throw new SpecError("Spec must be a JSON object");
-  const style = resolveStyle(spec.style, STYLE_EXTENSION);
-  for (const tone of Object.values(style.kindTones)) shade(tone, 1);
+  const style = resolveStyle(spec.style, STYLE_EXTENSION, theme);
+  for (const tone of Object.values(style.kindTones)) shade(style, tone, 1);
   if (!["auto", true, false].includes(style.memberCells)) {
     throw new SpecError('style.memberCells must be "auto", true, or false');
   }
@@ -771,8 +771,8 @@ export function normalizeSpec(spec) {
   };
 }
 
-export async function buildTypeMap(spec) {
-  const normalized = normalizeSpec(spec);
+export async function buildTypeMap(spec, options = {}) {
+  const normalized = normalizeSpec(spec, options);
   const { style } = normalized;
   const elk = await loadElk();
   const panelGap = 96;

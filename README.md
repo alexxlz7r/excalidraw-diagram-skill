@@ -122,17 +122,18 @@ in the sketch style":
 - `sketch`: rough lines, Excalifont for all text, and ink outlines without
   color.
 
-The style applies to the whole diagram, across all diagram types. The agent
-resolves the remaining theme values, such as colors, before layout:
+The style applies to the whole diagram, across all diagram types. The theme
+sets the colors: the ink, the plates, the canvas, and twelve hues with five
+shades each. The generators and hand-built scenes use the same theme:
 
-- standalone diagram or unknown destination: immutable built-in fallback;
-- known presentation, document, site, or brand system: a derived theme based
-  on the actual host artifact.
+- standalone diagram or unknown destination: the default theme, which is the
+  Excalidraw color picker palette;
+- known presentation, document, site, or brand system: a theme file that
+  changes only what the host needs. The generators read it with `--theme`.
 
-Theme resolution includes the canvas and transparency, text hierarchy, semantic
-colors, line colors, evidence styles, roughness, and stroke widths. Normal text
-must reach 4.5:1 contrast and large text 3:1. Resolved values are written to the
-working scene, never back into the installed skill.
+`scripts/theme.mjs` checks a theme: text must reach 4.5:1 contrast on every
+fill that holds text. Theme files stay beside the working artifact, never in
+the installed skill.
 
 ## Application design diagrams
 
@@ -185,9 +186,8 @@ install.sh                      Codex/Claude installer and updater
 skills/excalidraw-diagram/
   SKILL.md                      Workflow and reference routing
   references/
-    default-theme.md            Immutable standalone fallback
-    default-theme.json          Machine-readable semantic theme contract
-    theme-adaptation.md         Host-artifact theme derivation
+    theme.md                    Theme format, shade levels, and adaptation
+    default-theme.json          Default theme: the Excalidraw palette
     application-design.md       Lightweight UML-like application diagrams
     type-map-spec.md            Spec format for the type map generator
     sequence-spec.md            Spec format for the sequence generator
@@ -197,7 +197,7 @@ skills/excalidraw-diagram/
     json-schema.md              Scene and binding contract
   scripts/
     export_excalidraw.mjs       Editable SVG/PNG exporter
-    validate_theme.mjs          Theme contract and contrast validator
+    theme.mjs                   Theme loader, contrast check, and CLI
     setup_renderer.sh           Pinned setup, bundle build, dependency prune
     render_template.html        Browser export bridge
     package.json                Runtime and build dependencies

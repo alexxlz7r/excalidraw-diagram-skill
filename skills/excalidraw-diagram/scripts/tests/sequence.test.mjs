@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validateExcalidraw } from "../export_excalidraw.mjs";
-import { PALETTE, rebindScene } from "../scene.mjs";
+import { rebindScene } from "../scene.mjs";
+import { DEFAULT_THEME } from "../theme.mjs";
 import { buildSequence, SpecError } from "../sequence.mjs";
 
 function byId(scene) {
@@ -165,15 +166,15 @@ test("a group labels its participants with a rule above their headers", async ()
     assert.equal(rule.x, header(first).x, `${group}: the rule starts at the first header`);
     assert.equal(rule.x + rule.width, header(last).x + header(last).width, `${group}: the rule ends at the last header`);
     assert.ok(label.y + label.height <= rule.y && rule.y < header(first).y, `${group}: label, rule, then headers`);
-    assert.equal(rule.strokeColor, PALETTE.shades[tone][4]);
-    assert.equal(label.strokeColor, PALETTE.shades[tone][4]);
+    assert.equal(rule.strokeColor, DEFAULT_THEME.hues[tone][4]);
+    assert.equal(label.strokeColor, DEFAULT_THEME.hues[tone][4]);
   }
-  assert.equal(header("a").backgroundColor, PALETTE.shades.blue[1], "a header takes the tone of its group");
-  assert.equal(header("d").backgroundColor, PALETTE.shades.gray[1], "a participant tone wins over the group tone");
+  assert.equal(header("a").backgroundColor, DEFAULT_THEME.hues.blue[1], "a header takes the tone of its group");
+  assert.equal(header("d").backgroundColor, DEFAULT_THEME.hues.gray[1], "a participant tone wins over the group tone");
 
   const sketch = byId(await buildSequence(groupSpec("sketch")));
-  assert.equal(sketch.get("band-client-rule").strokeColor, PALETTE.black);
-  assert.equal(sketch.get("a-header").backgroundColor, PALETTE.white);
+  assert.equal(sketch.get("band-client-rule").strokeColor, DEFAULT_THEME.black);
+  assert.equal(sketch.get("a-header").backgroundColor, DEFAULT_THEME.white);
 });
 
 test("a group must hold adjacent participants", async () => {
@@ -241,8 +242,8 @@ test("a fragment frames its steps, with the kind in a tab and a guard per operan
   assert.ok(elements.get("f1-op1-guard").x > tab.x + tab.width, "the first guard follows the tab");
   const tabPoints = elements.get("f1-tab").points;
   assert.deepEqual(tabPoints[0], tabPoints.at(-1), "the tab is a closed shape");
-  assert.equal(elements.get("f1-tab").backgroundColor, PALETTE.shades.yellow[0], "the tab hides the lifelines under it");
-  assert.equal(elements.get("f2-tab").backgroundColor, PALETTE.white);
+  assert.equal(elements.get("f1-tab").backgroundColor, DEFAULT_THEME.hues.yellow[0], "the tab hides the lifelines under it");
+  assert.equal(elements.get("f2-tab").backgroundColor, DEFAULT_THEME.white);
   assert.ok(order.get("b-line") < order.get("f1-tab"));
 
   const divider = elements.get("f1-op2-divider");
@@ -254,20 +255,20 @@ test("a fragment frames its steps, with the kind in a tab and a guard per operan
   assert.equal(elements.has("f2-op2-divider"), false);
 
   const tint = elements.get("f1-op1-tint");
-  assert.equal(tint.backgroundColor, PALETTE.shades.yellow[0]);
+  assert.equal(tint.backgroundColor, DEFAULT_THEME.hues.yellow[0]);
   assert.deepEqual([tint.x, tint.y, tint.width, tint.y + tint.height], [alt.x, alt.y, alt.width, divider.y]);
   assert.ok(order.get("f1-op1-tint") < order.get("b-line"), "the tint is below the lifelines");
   assert.equal(elements.has("f1-op2-tint"), false, "an operand without a tone has no tint");
-  assert.equal(elements.get("m2-plate").backgroundColor, PALETTE.shades.yellow[0], "a plate takes the tint");
-  assert.equal(elements.get("f1-op1-guard-plate").backgroundColor, PALETTE.shades.yellow[0]);
-  assert.equal(elements.get("m4-plate").backgroundColor, PALETTE.white);
+  assert.equal(elements.get("m2-plate").backgroundColor, DEFAULT_THEME.hues.yellow[0], "a plate takes the tint");
+  assert.equal(elements.get("f1-op1-guard-plate").backgroundColor, DEFAULT_THEME.hues.yellow[0]);
+  assert.equal(elements.get("m4-plate").backgroundColor, DEFAULT_THEME.white);
 });
 
 test("sketch fragments have no tint", async () => {
   const elements = byId(await buildSequence(fragmentSpec("sketch")));
   assert.equal(elements.has("f1-op1-tint"), false);
-  assert.equal(elements.get("m2-plate").backgroundColor, PALETTE.white);
-  assert.equal(elements.get("f1").strokeColor, PALETTE.black);
+  assert.equal(elements.get("m2-plate").backgroundColor, DEFAULT_THEME.white);
+  assert.equal(elements.get("f1").strokeColor, DEFAULT_THEME.black);
 });
 
 test("fragments check their kind and operands", async () => {
@@ -386,7 +387,7 @@ test("the legend explains calls, replies, and tints, and the footnote closes the
   const elements = byId(scene);
   assert.equal(elements.get("legend-0-line").strokeStyle, "solid");
   assert.equal(elements.get("legend-1-line").strokeStyle, "dashed");
-  assert.equal(elements.get("legend-2-swatch").backgroundColor, PALETTE.shades.yellow[0], "a tone swatch shows the tint");
+  assert.equal(elements.get("legend-2-swatch").backgroundColor, DEFAULT_THEME.hues.yellow[0], "a tone swatch shows the tint");
   const line = elements.get("a-line");
   const legendTop = Math.min(...scene.elements.filter((element) => element.id.startsWith("legend-")).map((element) => element.y));
   const legendBottom = Math.max(...scene.elements.filter((element) => element.id.startsWith("legend-"))

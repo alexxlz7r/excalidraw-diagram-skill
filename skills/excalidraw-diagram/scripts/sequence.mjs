@@ -62,7 +62,7 @@ function normalizeGroups(items, style) {
     const id = requireId(item?.id, `${where}.id`);
     if (groups.has(id)) throw new SpecError(`duplicate group "${id}"`);
     const tone = item.tone ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     groups.set(id, { id, label: textOf(item.label, `${where}.label`), tone, members: [] });
   }
   return groups;
@@ -78,7 +78,7 @@ function normalizeParticipants(items, groups, style) {
     if (group === undefined) throw new SpecError(`${where}: unknown group "${item.group}"`);
     group?.members.push(index);
     const tone = item.tone ?? group?.tone ?? style.tone;
-    shade(tone, 1);
+    shade(style, tone, 1);
     participants.set(id, {
       id,
       index,
@@ -120,7 +120,7 @@ function* fragmentsOf(steps) {
   }
 }
 
-function normalizeFragment(item, where, participants, counter) {
+function normalizeFragment(item, where, participants, counter, style) {
   const type = item.fragment;
   if (!FRAGMENTS.includes(type)) throw new SpecError(`${where}.fragment must be one of ${FRAGMENTS.join(", ")}`);
   counter.fragments += 1;
@@ -141,11 +141,11 @@ function normalizeFragment(item, where, participants, counter) {
     id,
     type,
     operands: operands.map(([operand, label]) => {
-      if (operand?.tone !== undefined) shade(operand.tone, 1);
+      if (operand?.tone !== undefined) shade(style, operand.tone, 1);
       return {
         guard: textOf(operand?.guard, `${label}.guard`),
         tone: operand?.tone ?? null,
-        steps: normalizeSteps(operand?.steps, participants, `${label}.steps`, counter),
+        steps: normalizeSteps(operand?.steps, participants, `${label}.steps`, counter, style),
       };
     }),
   };
@@ -155,10 +155,10 @@ function normalizeFragment(item, where, participants, counter) {
 
 // Messages are numbered in reading order: m1, m2, and so on. Fragments are
 // numbered apart: f1, f2.
-function normalizeSteps(items, participants, label, counter) {
+function normalizeSteps(items, participants, label, counter, style) {
   return asArray(items, label).map((item, index) => {
     const where = `${label}[${index}]`;
-    if (item?.fragment !== undefined) return normalizeFragment(item, where, participants, counter);
+    if (item?.fragment !== undefined) return normalizeFragment(item, where, participants, counter, style);
     if (item?.note !== undefined) {
       const over = typeof item.over === "string" ? [item.over] : asArray(item.over, `${where}.over`);
       if (over.length === 0 || over.length > 2) {
@@ -166,7 +166,7 @@ function normalizeSteps(items, participants, label, counter) {
       }
       over.forEach((id, overIndex) => participantOf(participants, id, `${where}.over[${overIndex}]`));
       const tone = item.tone ?? null;
-      if (tone !== null) shade(tone, 1);
+      if (tone !== null) shade(style, tone, 1);
       counter.notes += 1;
       const indexes = over.map((id) => participants.get(id).index);
       const [first, last] = indexes[0] <= indexes.at(-1) ? [over[0], over.at(-1)] : [over.at(-1), over[0]];
@@ -221,19 +221,19 @@ function normalizeLegend(items, style) {
       };
     }
     if (item.tone !== undefined) {
-      shade(item.tone, 1);
+      shade(style, item.tone, 1);
       if (style.preset === "sketch") {
         throw new SpecError(`${where}: the sketch style has no colors; remove the tone item or use the clean style`);
       }
-      return { marker: "swatch", fill: { backgroundColor: shade(item.tone, 1), strokeColor: style.ink }, label };
+      return { marker: "swatch", fill: { backgroundColor: shade(style, item.tone, 1), strokeColor: style.ink }, label };
     }
     throw new SpecError(`${where} needs message or tone`);
   });
 }
 
-export function normalizeSpec(spec) {
+export function normalizeSpec(spec, { theme } = {}) {
   if (!spec || typeof spec !== "object") throw new SpecError("Spec must be a JSON object");
-  const style = resolveStyle(spec.style);
+  const style = resolveStyle(spec.style, {}, theme);
   const groups = normalizeGroups(spec.groups, style);
   const participants = normalizeParticipants(spec.participants, groups, style);
   return {
@@ -242,7 +242,7 @@ export function normalizeSpec(spec) {
     style,
     groups,
     participants,
-    steps: normalizeSteps(spec.steps, participants, "steps", { messages: 0, fragments: 0, notes: 0 }),
+    steps: normalizeSteps(spec.steps, participants, "steps", { messages: 0, fragments: 0, notes: 0 }, style),
     legend: normalizeLegend(spec.legend, style),
     footnote: textOf(spec.footnote, "footnote"),
   };
@@ -373,7 +373,7 @@ function placeFragment(fragment, top, context) {
   fragment.top = top;
   fragment.background = context.background;
   fragment.operands.forEach((operand, index) => {
-    operand.tint = operand.tone === null || style.preset === "sketch" ? null : shade(operand.tone, 1);
+    operand.tint = operand.tone === null || style.preset === "sketch" ? null : shade(style, operand.tone, 1);
     operand.top = y;
     const guardHeight = operand.guard === "" ? 0 : operand.guardSize.height;
     let contentTop;
@@ -758,8 +758,8 @@ function drawSelfCall(builder, step, context) {
   drawLabel(builder, step.id, step, labelX, groupIds, builder.style.ink, direction > 0 ? "left" : "right");
 }
 
-export async function buildSequence(spec) {
-  const normalized = normalizeSpec(spec);
+export async function buildSequence(spec, options = {}) {
+  const normalized = normalizeSpec(spec, options);
   const { style, participants, steps } = normalized;
   measureSteps(steps, style);
   const headerHeight = placeParticipants(participants, steps, style);
