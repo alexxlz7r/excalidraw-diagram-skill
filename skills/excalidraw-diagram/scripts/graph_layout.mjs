@@ -366,6 +366,87 @@ function removeJogs(graph, edges, nodes, boxAt, outlineOf) {
   }
 }
 
+// Another edge keeps this gap from the text of a label. A moved label keeps
+// `end` from the ends of its edge, clear of the arrowheads, and tries places
+// at `step` along the edge.
+const LABEL_MOVE = { gap: 4, end: END_SEGMENT, step: 4 };
+
+const boxAround = ([x, y], width, height) => ({ x: x - width / 2, y: y - height / 2, width, height });
+const boxesOverlap = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+// The four sides of a box as segments.
+function sidesOf({ x, y, width, height }) {
+  const corners = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
+  return corners.map((corner, index) => [corner, corners[(index + 1) % 4]]);
+}
+
+// ELK keeps space for a label in one layer, but routes the side segment of
+// another edge through that space. Move such a label along its own edge to
+// the nearest free place: clear of the other edges, the nodes, the text
+// beside them, the zone borders and zone labels, and the other edge labels.
+// Excalidraw draws the label of a straight edge at its middle, so that label
+// stays.
+function clearLabels(graph, edges, nodes, groups) {
+  const bent = (edge) => edge.label !== null && edges.get(edge.id).points.length > 2;
+  const centerOf = (edge) => {
+    const { points, labelCenter } = edges.get(edge.id);
+    if (bent(edge)) return labelCenter;
+    return [(points[0][0] + points[1][0]) / 2, (points[0][1] + points[1][1]) / 2];
+  };
+  const spaceAt = (edge, center) =>
+    boxAround(center, edge.label.width + 2 * LABEL_MARGIN, edge.label.height + 2 * LABEL_MOVE.gap);
+  const boxes = [
+    ...[...nodes.values()].flatMap((node) => [node, ...node.beside.values()]),
+    ...graph.groups.filter((group) => group.label).map((group) => {
+      const zone = groups.get(group.id);
+      const { width, height } = group.label;
+      return { x: zone.x, y: zone.y, width: width + ZONE.labelMargin, height: ZONE.pad + height + ZONE.labelGap };
+    }),
+  ];
+  const borders = [...groups.values()].flatMap(sidesOf);
+  const segmentsExcept = (id) => [...edges].flatMap(([other, { points }]) => (other === id ? [] : segmentsOf(points)));
+  for (const edge of graph.edges.filter(bent)) {
+    const { points, labelCenter } = edges.get(edge.id);
+    const others = segmentsExcept(edge.id);
+    const text = boxAround(labelCenter, edge.label.width + 2 * LABEL_MOVE.gap, edge.label.height + 2 * LABEL_MOVE.gap);
+    if (!others.some((segment) => crossesBox(segment, text))) continue;
+    const labels = graph.edges.filter((other) => other.id !== edge.id && other.label !== null)
+      .map((other) => spaceAt(other, centerOf(other)));
+    const own = segmentsOf(points);
+    const free = (center, carrier) => {
+      const space = spaceAt(edge, center);
+      return ![...others, ...borders, ...own.filter((segment) => segment !== carrier)].some((segment) => crossesBox(segment, space))
+        && ![...boxes, ...labels].some((box) => boxesOverlap(box, space));
+    };
+    // The free places on a segment form stretches. The middle of the longest
+    // stretch keeps the label farthest from the edges and boxes at its ends.
+    const places = own.flatMap((segment) => {
+      const [a, b] = segment;
+      const axis = a[1] === b[1] ? 0 : 1;
+      const half = (axis === 0 ? spaceAt(edge, a).width : spaceAt(edge, a).height) / 2;
+      const low = Math.min(a[axis], b[axis]);
+      const high = Math.max(a[axis], b[axis]);
+      const endAt = (point) => (point === points[0] || point === points.at(-1) ? LABEL_MOVE.end : 0);
+      const [lowEnd, highEnd] = a[axis] <= b[axis] ? [endAt(a), endAt(b)] : [endAt(b), endAt(a)];
+      const middles = [];
+      let stretch = [];
+      const close = () => {
+        if (stretch.length > 0) middles.push({ center: stretch[Math.floor(stretch.length / 2)], length: stretch.length });
+        stretch = [];
+      };
+      for (let at = low + half + lowEnd; at <= high - half - highEnd; at += LABEL_MOVE.step) {
+        const center = Object.assign([...a], { [axis]: at });
+        if (free(center, segment)) stretch.push(center);
+        else close();
+      }
+      close();
+      return middles;
+    });
+    const place = places.sort((p, q) => q.length - p.length)[0];
+    if (place) edges.set(edge.id, { points, labelCenter: place.center });
+  }
+}
+
 // Lay out a directed graph in layers along `direction`.
 //
 // - `groups`: `{ id, parent, label }`, parents before children. `label` is the
@@ -411,6 +492,7 @@ export async function layoutGraph(graph) {
     edges.set(edge.id, { points, labelCenter });
   }
   removeJogs(graph, edges, nodes, boxAt, outlineOf);
+  clearLabels(graph, edges, nodes, groups);
   return { nodes, groups, edges };
 }
 

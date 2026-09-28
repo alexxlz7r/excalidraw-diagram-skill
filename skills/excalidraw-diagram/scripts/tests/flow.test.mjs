@@ -617,3 +617,33 @@ test("edge labels keep apart, so two labels never read as one phrase", async () 
     }
   }
 });
+
+// Whether an axis-aligned segment runs through a box.
+const segmentHits = ([a, b], box) => overlaps(
+  { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), width: Math.abs(b[0] - a[0]) || 0.01, height: Math.abs(b[1] - a[1]) || 0.01 },
+  box,
+);
+
+test("no other edge runs through an edge label", async () => {
+  // ELK keeps space for the label of the long back edge in the middle layer,
+  // and routes the side entry of the short back edge through that space.
+  const scene = await buildFlow({
+    nodes: [{ id: "a" }, { id: "b" }, { id: "c", kind: "decision", label: "c?" }],
+    edges: [
+      { from: "a", to: "b", path: "main" },
+      { from: "b", to: "c", path: "main" },
+      { from: "c", to: "a", label: "fire" },
+      { from: "c", to: "b", label: "no" },
+    ],
+  });
+  const arrows = scene.elements.filter((element) => element.type === "arrow");
+  const labels = scene.elements.filter((element) => element.containerId && element.id.endsWith("-label"));
+  assert.equal(labels.length, 2);
+  for (const label of labels) {
+    for (const arrow of arrows.filter((item) => item.id !== label.containerId)) {
+      const points = globalPoints(arrow);
+      const crossing = points.slice(1).some((point, index) => segmentHits([points[index], point], label));
+      assert.ok(!crossing, `"${label.text}" is clear of ${arrow.id}`);
+    }
+  }
+});
