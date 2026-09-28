@@ -532,7 +532,7 @@ test("a connector inside a zone keeps clear of the zone border", async () => {
   for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
     const points = arrow.points.map(([px, py]) => [arrow.x + px, arrow.y + py]);
     for (const [a, b] of points.slice(1).map((point, index) => [points[index], point])) {
-      if (a[0] !== b[0] || a[1] === b[1] || a[0] <= zone.x || a[0] >= zone.x + zone.width) continue;
+      if (Math.abs(a[0] - b[0]) > 0.5 || a[0] <= zone.x || a[0] >= zone.x + zone.width) continue;
       const inZone = Math.min(Math.max(a[1], b[1]), zone.y + zone.height) - Math.max(Math.min(a[1], b[1]), zone.y);
       if (inZone <= 0) continue;
       along += 1;

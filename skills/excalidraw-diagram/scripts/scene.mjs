@@ -487,8 +487,9 @@ function crowdedSides(zones, routes, gap) {
   for (const [id, zone] of zones) {
     const sides = new Set();
     for (const [a, b] of segments) {
-      const vertical = a[0] === b[0];
-      if (vertical === (a[1] === b[1])) continue;
+      // ELK can put the two ends of a straight segment a rounding error apart.
+      const vertical = Math.abs(a[0] - b[0]) < 0.5;
+      if (vertical === Math.abs(a[1] - b[1]) < 0.5) continue;
       // `at` is the coordinate across the segment; `axis` runs along it.
       const [at, axis] = vertical ? [a[0], 1] : [a[1], 0];
       const [start, size] = vertical ? [zone.x, zone.width] : [zone.y, zone.height];

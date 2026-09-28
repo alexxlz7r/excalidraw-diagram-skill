@@ -652,7 +652,7 @@ test("no other edge runs through an edge label", async () => {
 test("an edge inside a zone keeps clear of the zone border", async () => {
   // Nested zone borders are 24 px apart. An edge at that distance from a
   // border reads as one more border.
-  const scene = await buildFlow({
+  const loop = {
     groups: [{ id: "z", label: "Z" }],
     nodes: [{ id: "a", group: "z" }, { id: "b", group: "z" }, { id: "c", group: "z" }],
     edges: [
@@ -660,18 +660,37 @@ test("an edge inside a zone keeps clear of the zone border", async () => {
       { from: "b", to: "c", path: "main" },
       { from: "c", to: "b" },
     ],
-  });
-  const zone = byId(scene).get("group-z");
-  const arrows = scene.elements.filter((element) => element.type === "arrow");
-  let parallel = 0;
-  for (const arrow of arrows) {
-    const points = globalPoints(arrow);
-    for (const [a, b] of points.slice(1).map((point, index) => [points[index], point])) {
-      if (a[0] !== b[0] || a[1] === b[1]) continue;
-      parallel += 1;
-      const gap = Math.min(a[0] - zone.x, zone.x + zone.width - a[0]);
-      assert.ok(gap >= 40, `${arrow.id} runs ${gap} px from the zone border`);
+  };
+  // Text widths give fractional coordinates: ELK puts the two ends of the
+  // vertical exit from the zone a rounding error apart.
+  const exit = {
+    style: "sketch",
+    groups: [{ id: "z", label: "APPEAL" }],
+    nodes: [
+      { id: "wait", label: ["Wait for", "appeal"], group: "z", dashed: true, note: ["60-day", "window"] },
+      { id: "overturn", kind: "decision", label: "overturned?", group: "z" },
+      { id: "settle", label: "Calculate settlement", note: ["estimate − deductible", "− depreciation"] },
+      { id: "denied", kind: "end", label: "closed · denial upheld" },
+    ],
+    edges: [
+      { from: "overturn", to: "denied", label: "no", path: "failure" },
+      { from: "overturn", to: "settle", label: "yes", path: "recovery" },
+    ],
+  };
+  for (const [name, spec] of Object.entries({ loop, exit })) {
+    const scene = await buildFlow(spec);
+    const zone = byId(scene).get("group-z");
+    let along = 0;
+    for (const arrow of scene.elements.filter((element) => element.type === "arrow")) {
+      const points = globalPoints(arrow);
+      for (const [a, b] of points.slice(1).map((point, index) => [points[index], point])) {
+        if (Math.abs(a[0] - b[0]) > 0.5 || a[0] <= zone.x || a[0] >= zone.x + zone.width) continue;
+        if (Math.min(Math.max(a[1], b[1]), zone.y + zone.height) <= Math.max(Math.min(a[1], b[1]), zone.y)) continue;
+        along += 1;
+        const gap = Math.min(a[0] - zone.x, zone.x + zone.width - a[0]);
+        assert.ok(gap >= 40, `${name}: ${arrow.id} runs ${gap.toFixed(1)} px from the zone border`);
+      }
     }
+    assert.ok(along > 0, `${name}: an edge runs inside the zone`);
   }
-  assert.ok(parallel > 0, "an edge runs along the zone border");
 });
