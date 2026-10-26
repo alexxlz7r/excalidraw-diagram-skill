@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Install or update the Excalidraw Diagram plugin for Codex, Claude Code, or both.
+# Install or update the Excalidraw Diagram plugin for Codex, Claude Code, omp, or all of them.
 set -euo pipefail
 
 readonly REPOSITORY="alexxlz7r/excalidraw-diagram-skill"
 readonly MARKETPLACE="excalidraw-diagram-skill"
 readonly CODEX_PLUGIN="excalidraw-diagram-skill@${MARKETPLACE}"
 readonly CLAUDE_PLUGIN="excalidraw-diagram@${MARKETPLACE}"
+readonly OMP_PLUGIN="excalidraw-diagram@${MARKETPLACE}"
 
 install_codex=0
 install_claude=0
+install_omp=0
 
 usage() {
   cat <<'EOF'
@@ -18,7 +20,8 @@ Usage:
   install.sh                 choose interactively
   install.sh --codex         install/update for Codex
   install.sh --claude        install/update for Claude Code
-  install.sh --all           install/update for both
+  install.sh --omp           install/update for omp
+  install.sh --all           install/update for all of them
 
 The flags can also be combined. When piping the installer, pass flags after
 `bash -s --`, for example:
@@ -40,7 +43,8 @@ while (($#)); do
   case "$1" in
     --codex) install_codex=1 ;;
     --claude) install_claude=1 ;;
-    --all) install_codex=1; install_claude=1 ;;
+    --omp) install_omp=1 ;;
+    --all) install_codex=1; install_claude=1; install_omp=1 ;;
     -h|--help) usage; exit 0 ;;
     *) fail "Unknown option: $1 (run with --help)" ;;
   esac
@@ -49,20 +53,22 @@ done
 
 choose_targets() {
   local answer=""
-  [ -r /dev/tty ] || fail "No interactive terminal. Re-run with --codex, --claude, or --all."
+  [ -r /dev/tty ] || fail "No interactive terminal. Re-run with --codex, --claude, --omp, or --all."
 
   printf '\nInstall or update Excalidraw Diagram for:\n'
   printf '  1) Codex\n'
   printf '  2) Claude Code\n'
-  printf '  3) Both\n'
-  printf 'Choose [1-3]: '
+  printf '  3) omp\n'
+  printf '  4) All\n'
+  printf 'Choose [1-4]: '
   read -r answer </dev/tty || fail "Could not read the selection."
 
   case "$answer" in
     1) install_codex=1 ;;
     2) install_claude=1 ;;
-    3) install_codex=1; install_claude=1 ;;
-    *) fail "Expected 1, 2, or 3." ;;
+    3) install_omp=1 ;;
+    4) install_codex=1; install_claude=1; install_omp=1 ;;
+    *) fail "Expected 1, 2, 3, or 4." ;;
   esac
 }
 
@@ -128,6 +134,36 @@ json_claude_install_path() {
       const match = rows.find(row => row.id === process.argv[1] && row.scope === "user");
       if (!match || !match.installPath) process.exit(1);
       process.stdout.write(match.installPath);
+    });
+  ' "$expected"
+}
+
+json_has_omp_plugin() {
+  local expected="$1"
+  node -e '
+    let input = "";
+    process.stdin.on("data", chunk => input += chunk);
+    process.stdin.on("end", () => {
+      const rows = JSON.parse(input).marketplace || [];
+      const match = rows.find(row => row.id === process.argv[1]);
+      process.exit(match && Array.isArray(match.entries)
+        && match.entries.some(entry => entry.scope === "user") ? 0 : 1);
+    });
+  ' "$expected"
+}
+
+json_omp_install_path() {
+  local expected="$1"
+  node -e '
+    let input = "";
+    process.stdin.on("data", chunk => input += chunk);
+    process.stdin.on("end", () => {
+      const rows = JSON.parse(input).marketplace || [];
+      const match = rows.find(row => row.id === process.argv[1]);
+      const entry = match && Array.isArray(match.entries)
+        && match.entries.find(entry => entry.scope === "user");
+      if (!entry || !entry.installPath) process.exit(1);
+      process.stdout.write(entry.installPath);
     });
   ' "$expected"
 }
@@ -241,7 +277,37 @@ install_for_claude() {
   printf '[Claude Code] Ready. Run /reload-plugins or start a new session.\n'
 }
 
-if ((install_codex == 0 && install_claude == 0)); then
+install_for_omp() {
+  local plugin_root=""
+  local add_output=""
+  local source="${EXCALIDRAW_MARKETPLACE_SOURCE:-$REPOSITORY}"
+
+  require_command omp
+  printf '\n[omp] Configuring marketplace...\n'
+  if ! add_output="$(omp plugin marketplace add "$source" 2>&1)"; then
+    if printf '%s' "$add_output" | grep -q 'already exists'; then
+      omp plugin marketplace update "$MARKETPLACE" >/dev/null
+    else
+      fail "Could not add the omp marketplace: $add_output"
+    fi
+  fi
+
+  printf '[omp] Installing or updating plugin...\n'
+  if omp plugin list --json | json_has_omp_plugin "$OMP_PLUGIN"; then
+    omp plugin upgrade "$OMP_PLUGIN" --scope user >/dev/null
+  else
+    omp plugin install "$OMP_PLUGIN" --scope user >/dev/null
+  fi
+
+  plugin_root="$(omp plugin list --json | json_omp_install_path "$OMP_PLUGIN")" \
+    || fail "omp installed the plugin but did not report its path."
+
+  printf '[omp] Setting up renderer...\n'
+  setup_renderer "$plugin_root"
+  printf '[omp] Ready. Run /reload-plugins or start a new session.\n'
+}
+
+if ((install_codex == 0 && install_claude == 0 && install_omp == 0)); then
   choose_targets
 fi
 
@@ -250,5 +316,6 @@ require_command npm
 
 ((install_codex == 1)) && install_for_codex
 ((install_claude == 1)) && install_for_claude
+((install_omp == 1)) && install_for_omp
 
 printf '\nExcalidraw Diagram installation complete.\n'

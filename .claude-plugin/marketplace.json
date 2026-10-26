@@ -4,7 +4,7 @@
     "name": "alexxlz7r",
     "url": "https://github.com/alexxlz7r"
   },
-  "description": "Excalidraw diagram skill for Claude Code.",
+  "description": "Excalidraw diagram skill for Claude Code and omp.",
   "plugins": [
     {
       "name": "excalidraw-diagram",

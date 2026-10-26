@@ -12,7 +12,7 @@ technical evidence, and a render-inspect-fix loop before delivery.
 ## Installation
 
 Paste this into a terminal. The installer asks whether to install for Codex,
-Claude Code, or both:
+Claude Code, omp, or all of them:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash
@@ -38,7 +38,13 @@ curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --claude
 ```
 
-**Both**
+**omp only**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --omp
+```
+
+**All hosts**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alexxlz7r/excalidraw-diagram-skill/main/install.sh | bash -s -- --all
@@ -64,7 +70,14 @@ claude plugin marketplace update excalidraw-diagram-skill
 claude plugin update excalidraw-diagram@excalidraw-diagram-skill --scope user --yes
 ```
 
-Start a new Codex thread after an update. In Claude Code, run
+**omp:** refresh the marketplace and upgrade the installed plugin.
+
+```bash
+omp plugin marketplace update excalidraw-diagram-skill
+omp plugin upgrade excalidraw-diagram@excalidraw-diagram-skill --scope user
+```
+
+Start a new Codex thread after an update. In Claude Code and omp, run
 `/reload-plugins` or start a new session.
 
 ### Manual Claude Code installation
@@ -93,6 +106,20 @@ skills/excalidraw-diagram/scripts/setup_renderer.sh
 Then link `skills/excalidraw-diagram` into `$CODEX_HOME/skills` (or
 `~/.codex/skills`). Do not keep that standalone copy alongside the plugin in
 Codex app/CLI, or the skill may be discovered twice.
+
+### Manual omp installation
+
+omp reads the same marketplace catalog as Claude Code, so the plugin installs
+natively:
+
+```bash
+omp plugin marketplace add alexlz7r/excalidraw-diagram-skill
+omp plugin install excalidraw-diagram@excalidraw-diagram-skill
+```
+
+After a manual plugin install, ask omp to `Set up the excalidraw-diagram
+exporter.`, or run `install.sh --omp`. Run `/reload-plugins` or start a new
+session to load the skill.
 
 ## Exporter setup
 
@@ -180,9 +207,9 @@ path of the delivered file and a short summary.
 ## Repository layout
 
 ```text
-.claude-plugin/                  Claude plugin and marketplace manifests
+.claude-plugin/                  Claude plugin manifest; marketplace catalog shared with omp
 .codex-plugin/plugin.json       Codex plugin package manifest
-install.sh                      Codex/Claude installer and updater
+install.sh                      Codex/Claude/omp installer and updater
 skills/excalidraw-diagram/
   SKILL.md                      Workflow and reference routing
   references/
@@ -217,6 +244,7 @@ skills/excalidraw-diagram/
 
 ```bash
 tests/install-codex-update.sh
+tests/install-omp.sh
 cd skills/excalidraw-diagram/scripts
 npm test
 npm run test:cold
